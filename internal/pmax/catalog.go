@@ -9,18 +9,30 @@ type MetricDef struct {
 	Name string // exported metric name
 }
 
+// PerfParent describes a two-level category (FE/BE ports): objects are keyed
+// per parent, so discovery first lists the parent category's objects, then
+// POSTs the child keys endpoint once per parent with the parent id in the body.
+type PerfParent struct {
+	Category string // parent keys category, e.g. "FEDirector"
+	IDField  string // parent id field in keys/metrics bodies, e.g. "directorId"
+	Label    string // Prometheus label for the parent id, e.g. "director"
+}
+
 // PerfCategory describes one /performance/{Category} namespace: how its objects
 // are keyed and which curated metrics to query. The catalog is provisional
-// until validated against a live Unisphere with `--once --debug` (ADR-0009).
+// until validated against a live Unisphere with `--once --debug` (ADR-0009);
+// port/cache keys are cross-checked against kckecheng/powermax_exporter, which
+// ran against real arrays.
 type PerfCategory struct {
-	Category string // URL path segment, e.g. "FEDirector"
-	IDField  string // object id field in keys entries + metrics body; "" = array-level
-	ObjLabel string // Prometheus label for the object id; "" = array-level
+	Category string      // URL path segment, e.g. "FEDirector"
+	IDField  string      // object id field in keys entries + metrics body; "" = array-level
+	ObjLabel string      // Prometheus label for the object id; "" = array-level
+	Parent   *PerfParent // non-nil for per-parent keyed categories (ports)
 	Metrics  []MetricDef
 }
 
-// PerfCategories is the v1 catalog: Array, FE/BE/RDF directors, StorageGroup,
-// SRP. FEPort/BEPort are deferred (their keys endpoints are per-director).
+// PerfCategories is the catalog: Array, FE/BE/RDF directors, FE/BE ports,
+// cache partitions, StorageGroup, SRP.
 func PerfCategories() []PerfCategory {
 	return []PerfCategory{
 		{
@@ -62,8 +74,50 @@ func PerfCategories() []PerfCategory {
 			Metrics: []MetricDef{
 				{Key: "PercentBusy", Name: "pmax_be_director_busy_percent"},
 				{Key: "IOs", Name: "pmax_be_director_iops"},
-				{Key: "MBReads", Name: "pmax_be_director_read_megabytes_per_second"},
+				{Key: "MBRead", Name: "pmax_be_director_read_megabytes_per_second"},
 				{Key: "MBWritten", Name: "pmax_be_director_write_megabytes_per_second"},
+			},
+		},
+		{
+			Category: "FEPort",
+			IDField:  "portId",
+			ObjLabel: "port",
+			Parent:   &PerfParent{Category: "FEDirector", IDField: "directorId", Label: "director"},
+			Metrics: []MetricDef{
+				{Key: "PercentBusy", Name: "pmax_fe_port_busy_percent"},
+				{Key: "IOs", Name: "pmax_fe_port_iops"},
+				{Key: "MBs", Name: "pmax_fe_port_megabytes_per_second"},
+				{Key: "MBRead", Name: "pmax_fe_port_read_megabytes_per_second"},
+				{Key: "MBWritten", Name: "pmax_fe_port_write_megabytes_per_second"},
+				{Key: "ResponseTime", Name: "pmax_fe_port_response_time_milliseconds"},
+				{Key: "AvgIOSize", Name: "pmax_fe_port_avg_io_size_kilobytes"},
+			},
+		},
+		{
+			Category: "BEPort",
+			IDField:  "portId",
+			ObjLabel: "port",
+			Parent:   &PerfParent{Category: "BEDirector", IDField: "directorId", Label: "director"},
+			Metrics: []MetricDef{
+				{Key: "PercentBusy", Name: "pmax_be_port_busy_percent"},
+				{Key: "IOs", Name: "pmax_be_port_iops"},
+				{Key: "MBs", Name: "pmax_be_port_megabytes_per_second"},
+				{Key: "MBRead", Name: "pmax_be_port_read_megabytes_per_second"},
+				{Key: "MBWritten", Name: "pmax_be_port_write_megabytes_per_second"},
+				{Key: "AvgIOSize", Name: "pmax_be_port_avg_io_size_kilobytes"},
+			},
+		},
+		{
+			Category: "CachePartition",
+			IDField:  "cachePartitionId",
+			ObjLabel: "cache_partition",
+			Metrics: []MetricDef{
+				{Key: "WPCount", Name: "pmax_cache_partition_wp_count"},
+				{Key: "PercentCacheUsed", Name: "pmax_cache_partition_used_percent"},
+				{Key: "PercentWPUtilization", Name: "pmax_cache_partition_wp_utilization_percent"},
+				{Key: "HostIOs", Name: "pmax_cache_partition_host_iops"},
+				{Key: "HostMBs", Name: "pmax_cache_partition_host_megabytes_per_second"},
+				{Key: "PercentHit", Name: "pmax_cache_partition_hit_percent"},
 			},
 		},
 		{

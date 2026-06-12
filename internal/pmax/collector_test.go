@@ -121,7 +121,7 @@ func TestFailingCollectorDegradesNotFails(t *testing.T) {
 }
 
 func TestRegistryContainsAllPerfCategories(t *testing.T) {
-	reg := Registry(4)
+	reg := Registry(4, VolumeOptions{})
 	names := map[string]bool{}
 	for _, rc := range reg {
 		names[rc.Name()] = true
@@ -129,10 +129,25 @@ func TestRegistryContainsAllPerfCategories(t *testing.T) {
 	for _, want := range []string{
 		"unisphere", "array_info", "srp_capacity",
 		"perf_array", "perf_fedirector", "perf_bedirector",
-		"perf_rdfdirector", "perf_storagegroup", "perf_srp",
+		"perf_rdfdirector", "perf_feport", "perf_beport",
+		"perf_cachepartition", "perf_storagegroup", "perf_srp",
 	} {
 		if !names[want] {
 			t.Fatalf("registry missing collector %s (have %v)", want, names)
 		}
+	}
+	if names["perf_volume"] {
+		t.Fatal("volume collector must be opt-in (disabled by default)")
+	}
+
+	reg = Registry(4, VolumeOptions{Enabled: true})
+	found := false
+	for _, rc := range reg {
+		if rc.Name() == "perf_volume" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("volume collector missing when enabled")
 	}
 }

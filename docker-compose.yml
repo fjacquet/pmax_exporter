@@ -1,7 +1,8 @@
-# Quickstart stack: pmax_exporter + Prometheus.
+# Quickstart stack: pmax_exporter + Prometheus + Grafana.
 # 1. cp .env.example .env  (set PMAX1_HOSTNAME / PMAX1_USERNAME / PMAX1_PASSWORD)
 # 2. docker compose up -d
-# 3. open http://localhost:9090 (Prometheus) — query pmax_up
+# 3. open http://localhost:3000 (Grafana, admin/admin) — "PowerMax — Overview"
+#    or http://localhost:9090 (Prometheus) — query pmax_up
 #
 # Single-target quickstart only: config.yaml is the source of truth; for more
 # Unisphere instances add one `servers:` entry each (".env is nice, config.yaml
@@ -27,3 +28,15 @@ services:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
     ports:
       - "9090:9090"
+
+  grafana:
+    image: grafana/grafana:latest
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GF_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GF_ADMIN_PASSWORD:-admin}
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "3000:3000"

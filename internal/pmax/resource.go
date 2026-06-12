@@ -28,8 +28,9 @@ type ResourceCollector interface {
 }
 
 // Registry is the ordered set of collectors run for every Unisphere instance.
-// maxConcurrent caps in-flight per-object performance POSTs.
-func Registry(maxConcurrent int) []ResourceCollector {
+// maxConcurrent caps in-flight per-object performance POSTs; volume metrics
+// are opt-in (high cardinality).
+func Registry(maxConcurrent int, vol VolumeOptions) []ResourceCollector {
 	out := []ResourceCollector{
 		Unisphere{},
 		ArrayInfo{},
@@ -37,6 +38,9 @@ func Registry(maxConcurrent int) []ResourceCollector {
 	}
 	for _, cat := range PerfCategories() {
 		out = append(out, Perf{Cat: cat, MaxConcurrent: maxConcurrent})
+	}
+	if vol.Enabled {
+		out = append(out, Volume{Opts: vol, MaxConcurrent: maxConcurrent})
 	}
 	return out
 }

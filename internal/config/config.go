@@ -46,10 +46,14 @@ type ServerHTTP struct {
 
 // Collection holds loop timing. MaxConcurrent caps in-flight performance queries
 // per Unisphere instance (object-level metrics are one POST per object).
+// VolumeMetrics opts into per-volume performance (high cardinality — one series
+// set per device); VolumeStorageGroups optionally restricts it to listed SGs.
 type Collection struct {
-	Interval      time.Duration `yaml:"interval"`
-	Timeout       time.Duration `yaml:"timeout"`
-	MaxConcurrent int           `yaml:"maxConcurrent"`
+	Interval            time.Duration `yaml:"interval"`
+	Timeout             time.Duration `yaml:"timeout"`
+	MaxConcurrent       int           `yaml:"maxConcurrent"`
+	VolumeMetrics       bool          `yaml:"volumeMetrics"`
+	VolumeStorageGroups []string      `yaml:"volumeStorageGroups"`
 }
 
 // OTel configures optional OTLP metric export.

@@ -3,6 +3,11 @@
 [![CI](https://github.com/fjacquet/pmax_exporter/actions/workflows/ci.yml/badge.svg)](https://github.com/fjacquet/pmax_exporter/actions/workflows/ci.yml)
 [![Release](https://github.com/fjacquet/pmax_exporter/actions/workflows/release.yml/badge.svg)](https://github.com/fjacquet/pmax_exporter/actions/workflows/release.yml)
 [![Docs](https://github.com/fjacquet/pmax_exporter/actions/workflows/docs.yml/badge.svg)](https://fjacquet.github.io/pmax_exporter/)
+[![Latest release](https://img.shields.io/github/v/release/fjacquet/pmax_exporter?logo=github&sort=semver)](https://github.com/fjacquet/pmax_exporter/releases/latest)
+[![Go Report Card](https://goreportcard.com/badge/github.com/fjacquet/pmax_exporter)](https://goreportcard.com/report/github.com/fjacquet/pmax_exporter)
+[![Go version](https://img.shields.io/github/go-mod/go-version/fjacquet/pmax_exporter?logo=go&logoColor=white)](go.mod)
+[![Container image](https://img.shields.io/badge/GHCR-pmax__exporter-2496ED?logo=docker&logoColor=white)](https://github.com/fjacquet/pmax_exporter/pkgs/container/pmax_exporter)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 Prometheus + OTLP exporter for **Dell PowerMax**, via the Unisphere for PowerMax REST
 API. One process monitors any number of Unisphere instances and arrays.
@@ -11,9 +16,12 @@ API. One process monitors any number of Unisphere instances and arrays.
 
 ## Features
 
-- Array, FE/BE/RDF director, storage group, and SRP **performance** (diagnostic 5-min
-  data), SRP **capacity**, array inventory — all as gauges with unit-explicit names
-  ([metrics reference](docs/metrics.md)).
+- Array, FE/BE/RDF director, FE/BE port, cache partition, storage group, and SRP
+  **performance** (diagnostic 5-min data), SRP **capacity**, array inventory — all as
+  gauges with unit-explicit names ([metrics reference](docs/metrics.md)). Opt-in
+  per-volume metrics, batched by storage group.
+- **Grafana dashboard** included (`grafana/dashboards/pmax-overview.json`), provisioned
+  automatically by the compose stack.
 - **Snapshot model**: a background loop polls Unisphere; `/metrics` scrapes and OTLP
   pushes read an immutable snapshot — backend load is independent of scraper count.
 - **Dual export**: Prometheus exposition + optional OTLP gRPC push.
@@ -26,7 +34,7 @@ API. One process monitors any number of Unisphere instances and arrays.
 
 ```bash
 cp .env.example .env        # set PMAX1_HOSTNAME / PMAX1_USERNAME / PMAX1_PASSWORD
-docker compose up -d        # exporter (:9104) + Prometheus (:9090)
+docker compose up -d        # exporter (:9104) + Prometheus (:9090) + Grafana (:3000)
 curl -s localhost:9104/metrics | grep pmax_up
 ```
 

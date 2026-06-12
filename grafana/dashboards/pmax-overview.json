@@ -1,0 +1,196 @@
+{
+  "annotations": {"list": []},
+  "editable": true,
+  "graphTooltip": 1,
+  "title": "PowerMax — Overview",
+  "uid": "pmax-overview",
+  "tags": ["pmax", "powermax", "dell", "storage"],
+  "timezone": "",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "1m",
+  "time": {"from": "now-6h", "to": "now"},
+  "templating": {
+    "list": [
+      {
+        "name": "server",
+        "label": "Unisphere",
+        "type": "query",
+        "datasource": {"type": "prometheus", "uid": "prometheus"},
+        "query": "label_values(pmax_up, server)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "current": {"text": "All", "value": "$__all"}
+      },
+      {
+        "name": "array",
+        "label": "Array",
+        "type": "query",
+        "datasource": {"type": "prometheus", "uid": "prometheus"},
+        "query": "label_values(pmax_array_perf_timestamp_seconds{server=~\"$server\"}, array)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "current": {"text": "All", "value": "$__all"}
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1, "type": "stat", "title": "Unisphere up",
+      "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"expr": "pmax_up{server=~\"$server\"}", "legendFormat": "{{server}}", "instant": true}],
+      "fieldConfig": {"defaults": {"thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "green", "value": 1}]}, "mappings": [{"type": "value", "options": {"0": {"text": "DOWN"}, "1": {"text": "UP"}}}]}, "overrides": []},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "colorMode": "background", "textMode": "value_and_name"}
+    },
+    {
+      "id": 2, "type": "stat", "title": "Arrays monitored",
+      "gridPos": {"h": 4, "w": 4, "x": 6, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"expr": "count(pmax_array_perf_timestamp_seconds{server=~\"$server\", array=~\"$array\"})", "instant": true}],
+      "fieldConfig": {"defaults": {"thresholds": {"mode": "absolute", "steps": [{"color": "blue", "value": null}]}}, "overrides": []},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "colorMode": "value"}
+    },
+    {
+      "id": 3, "type": "stat", "title": "Perf data age",
+      "gridPos": {"h": 4, "w": 7, "x": 10, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"expr": "time() - pmax_array_perf_timestamp_seconds{server=~\"$server\", array=~\"$array\"}", "legendFormat": "{{array}}", "instant": true}],
+      "fieldConfig": {"defaults": {"unit": "s", "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 600}, {"color": "red", "value": 1200}]}}, "overrides": []},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "colorMode": "background", "textMode": "value_and_name"}
+    },
+    {
+      "id": 4, "type": "stat", "title": "Failing collectors",
+      "gridPos": {"h": 4, "w": 7, "x": 17, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"expr": "sum(1 - pmax_collector_up{server=~\"$server\"})", "instant": true}],
+      "fieldConfig": {"defaults": {"thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "red", "value": 1}]}}, "overrides": []},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "colorMode": "background"}
+    },
+
+    {
+      "id": 10, "type": "timeseries", "title": "Array host IOPS",
+      "gridPos": {"h": 8, "w": 8, "x": 0, "y": 4},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [
+        {"expr": "pmax_array_host_iops{server=~\"$server\", array=~\"$array\"}", "legendFormat": "{{array}} total"},
+        {"expr": "pmax_array_host_read_iops{server=~\"$server\", array=~\"$array\"}", "legendFormat": "{{array}} read"},
+        {"expr": "pmax_array_host_write_iops{server=~\"$server\", array=~\"$array\"}", "legendFormat": "{{array}} write"}
+      ],
+      "fieldConfig": {"defaults": {"unit": "iops", "custom": {"fillOpacity": 8}}, "overrides": []},
+      "options": {"legend": {"displayMode": "table", "calcs": ["lastNotNull", "max"]}}
+    },
+    {
+      "id": 11, "type": "timeseries", "title": "Array host bandwidth",
+      "gridPos": {"h": 8, "w": 8, "x": 8, "y": 4},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [
+        {"expr": "pmax_array_host_megabytes_per_second{server=~\"$server\", array=~\"$array\"}", "legendFormat": "{{array}} total"},
+        {"expr": "pmax_array_host_read_megabytes_per_second{server=~\"$server\", array=~\"$array\"}", "legendFormat": "{{array}} read"},
+        {"expr": "pmax_array_host_write_megabytes_per_second{server=~\"$server\", array=~\"$array\"}", "legendFormat": "{{array}} write"}
+      ],
+      "fieldConfig": {"defaults": {"unit": "MBs", "custom": {"fillOpacity": 8}}, "overrides": []},
+      "options": {"legend": {"displayMode": "table", "calcs": ["lastNotNull", "max"]}}
+    },
+    {
+      "id": 12, "type": "timeseries", "title": "Array response time",
+      "gridPos": {"h": 8, "w": 8, "x": 16, "y": 4},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [
+        {"expr": "pmax_array_read_response_time_milliseconds{server=~\"$server\", array=~\"$array\"}", "legendFormat": "{{array}} read"},
+        {"expr": "pmax_array_write_response_time_milliseconds{server=~\"$server\", array=~\"$array\"}", "legendFormat": "{{array}} write"}
+      ],
+      "fieldConfig": {"defaults": {"unit": "ms", "custom": {"fillOpacity": 8}}, "overrides": []},
+      "options": {"legend": {"displayMode": "table", "calcs": ["lastNotNull", "max"]}}
+    },
+
+    {
+      "id": 20, "type": "timeseries", "title": "Cache: write-pending & hit",
+      "gridPos": {"h": 8, "w": 8, "x": 0, "y": 12},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [
+        {"expr": "pmax_array_cache_write_pending_percent{server=~\"$server\", array=~\"$array\"}", "legendFormat": "{{array}} WP %"},
+        {"expr": "pmax_array_cache_hit_percent{server=~\"$server\", array=~\"$array\"}", "legendFormat": "{{array}} hit %"}
+      ],
+      "fieldConfig": {"defaults": {"unit": "percent", "max": 100, "custom": {"fillOpacity": 8}}, "overrides": []},
+      "options": {"legend": {"displayMode": "table", "calcs": ["lastNotNull", "max"]}}
+    },
+    {
+      "id": 21, "type": "timeseries", "title": "FE director busy %",
+      "gridPos": {"h": 8, "w": 8, "x": 8, "y": 12},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"expr": "pmax_fe_director_busy_percent{server=~\"$server\", array=~\"$array\"}", "legendFormat": "{{array}} {{director}}"}],
+      "fieldConfig": {"defaults": {"unit": "percent", "max": 100, "custom": {"fillOpacity": 8}}, "overrides": []},
+      "options": {"legend": {"displayMode": "table", "calcs": ["lastNotNull", "max"]}}
+    },
+    {
+      "id": 22, "type": "timeseries", "title": "FE port busy % (top 10)",
+      "gridPos": {"h": 8, "w": 8, "x": 16, "y": 12},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"expr": "topk(10, pmax_fe_port_busy_percent{server=~\"$server\", array=~\"$array\"})", "legendFormat": "{{array}} {{director}}:{{port}}"}],
+      "fieldConfig": {"defaults": {"unit": "percent", "max": 100, "custom": {"fillOpacity": 8}}, "overrides": []},
+      "options": {"legend": {"displayMode": "table", "calcs": ["lastNotNull", "max"]}}
+    },
+
+    {
+      "id": 30, "type": "timeseries", "title": "BE / RDF director busy %",
+      "gridPos": {"h": 8, "w": 8, "x": 0, "y": 20},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [
+        {"expr": "pmax_be_director_busy_percent{server=~\"$server\", array=~\"$array\"}", "legendFormat": "{{array}} {{director}} (BE)"},
+        {"expr": "pmax_rdf_director_busy_percent{server=~\"$server\", array=~\"$array\"}", "legendFormat": "{{array}} {{director}} (RDF)"}
+      ],
+      "fieldConfig": {"defaults": {"unit": "percent", "max": 100, "custom": {"fillOpacity": 8}}, "overrides": []},
+      "options": {"legend": {"displayMode": "table", "calcs": ["lastNotNull", "max"]}}
+    },
+    {
+      "id": 31, "type": "timeseries", "title": "Storage group IOPS (top 10)",
+      "gridPos": {"h": 8, "w": 8, "x": 8, "y": 20},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"expr": "topk(10, pmax_storage_group_host_iops{server=~\"$server\", array=~\"$array\"})", "legendFormat": "{{array}} {{storage_group}}"}],
+      "fieldConfig": {"defaults": {"unit": "iops", "custom": {"fillOpacity": 8}}, "overrides": []},
+      "options": {"legend": {"displayMode": "table", "calcs": ["lastNotNull", "max"]}}
+    },
+    {
+      "id": 32, "type": "timeseries", "title": "Storage group response time (top 10)",
+      "gridPos": {"h": 8, "w": 8, "x": 16, "y": 20},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [
+        {"expr": "topk(10, pmax_storage_group_read_response_time_milliseconds{server=~\"$server\", array=~\"$array\"})", "legendFormat": "{{array}} {{storage_group}} read"},
+        {"expr": "topk(10, pmax_storage_group_write_response_time_milliseconds{server=~\"$server\", array=~\"$array\"})", "legendFormat": "{{array}} {{storage_group}} write"}
+      ],
+      "fieldConfig": {"defaults": {"unit": "ms", "custom": {"fillOpacity": 8}}, "overrides": []},
+      "options": {"legend": {"displayMode": "table", "calcs": ["lastNotNull", "max"]}}
+    },
+
+    {
+      "id": 40, "type": "bargauge", "title": "SRP usable capacity used",
+      "gridPos": {"h": 8, "w": 8, "x": 0, "y": 28},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"expr": "100 * pmax_srp_usable_used_terabytes{server=~\"$server\", array=~\"$array\"} / pmax_srp_usable_total_terabytes{server=~\"$server\", array=~\"$array\"}", "legendFormat": "{{array}} {{srp}}", "instant": true}],
+      "fieldConfig": {"defaults": {"unit": "percent", "min": 0, "max": 100, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 70}, {"color": "red", "value": 85}]}}, "overrides": []},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "displayMode": "gradient", "orientation": "horizontal"}
+    },
+    {
+      "id": 41, "type": "stat", "title": "SRP efficiency (x:1)",
+      "gridPos": {"h": 8, "w": 4, "x": 8, "y": 28},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"expr": "pmax_srp_overall_efficiency_ratio{server=~\"$server\", array=~\"$array\"}", "legendFormat": "{{array}} {{srp}}", "instant": true}],
+      "fieldConfig": {"defaults": {"decimals": 1, "thresholds": {"mode": "absolute", "steps": [{"color": "blue", "value": null}]}}, "overrides": []},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "colorMode": "value", "textMode": "value_and_name"}
+    },
+    {
+      "id": 42, "type": "timeseries", "title": "SRP load",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 28},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [
+        {"expr": "pmax_srp_host_iops{server=~\"$server\", array=~\"$array\"}", "legendFormat": "{{array}} {{srp}} IOPS"},
+        {"expr": "pmax_srp_response_time_milliseconds{server=~\"$server\", array=~\"$array\"}", "legendFormat": "{{array}} {{srp}} resp ms"}
+      ],
+      "fieldConfig": {"defaults": {"custom": {"fillOpacity": 8}}, "overrides": [{"matcher": {"id": "byRegexp", "options": ".*resp ms.*"}, "properties": [{"id": "unit", "value": "ms"}, {"id": "custom.axisPlacement", "value": "right"}]}]},
+      "options": {"legend": {"displayMode": "table", "calcs": ["lastNotNull", "max"]}}
+    }
+  ]
+}

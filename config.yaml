@@ -7,6 +7,8 @@ collection:
   interval: "5m"      # diagnostic perf data has 5-minute granularity — faster polling re-reads the same point
   timeout: "120s"
   maxConcurrent: 8    # cap on in-flight per-object performance queries per Unisphere
+  volumeMetrics: false        # opt-in per-volume perf (high cardinality — one series set per device)
+  volumeStorageGroups: []     # optional SG scope for volume metrics; empty = all SGs
 otel:
   enabled: false
   endpoint: "localhost:4317"

@@ -12,8 +12,11 @@ page.
 |---|---|---|
 | `server` | every metric | configured Unisphere instance name |
 | `array` | every array-scoped metric | symmetrix ID |
-| `director` | director categories | director ID (e.g. `FA-1D`) |
-| `storage_group` | storage-group category | storage group ID |
+| `director` | director and port categories | director ID (e.g. `FA-1D`) |
+| `port` | port categories | port ID within the director |
+| `cache_partition` | cache-partition category | cache partition ID |
+| `storage_group` | storage-group and volume categories | storage group ID |
+| `volume` | volume category (opt-in) | device ID |
 | `srp` | SRP metrics | storage resource pool ID |
 
 ## Exporter health
@@ -87,6 +90,42 @@ page.
 | `pmax_rdf_director_iops` | IOs | IO/s |
 | `pmax_rdf_director_megabytes_per_second` | MBSentAndReceived | MB/s |
 
+## FE port performance (`/performance/FEPort`)
+
+Discovered per FE director (`keys` POST carries `directorId`); labels `director` + `port`.
+
+| Metric | Unisphere key | Unit |
+|---|---|---|
+| `pmax_fe_port_busy_percent` | PercentBusy | % |
+| `pmax_fe_port_iops` | IOs | IO/s |
+| `pmax_fe_port_megabytes_per_second` | MBs | MB/s |
+| `pmax_fe_port_read_megabytes_per_second` | MBRead | MB/s |
+| `pmax_fe_port_write_megabytes_per_second` | MBWritten | MB/s |
+| `pmax_fe_port_response_time_milliseconds` | ResponseTime | ms |
+| `pmax_fe_port_avg_io_size_kilobytes` | AvgIOSize | KB |
+
+## BE port performance (`/performance/BEPort`)
+
+| Metric | Unisphere key | Unit |
+|---|---|---|
+| `pmax_be_port_busy_percent` | PercentBusy | % |
+| `pmax_be_port_iops` | IOs | IO/s |
+| `pmax_be_port_megabytes_per_second` | MBs | MB/s |
+| `pmax_be_port_read_megabytes_per_second` | MBRead | MB/s |
+| `pmax_be_port_write_megabytes_per_second` | MBWritten | MB/s |
+| `pmax_be_port_avg_io_size_kilobytes` | AvgIOSize | KB |
+
+## Cache partition performance (`/performance/CachePartition`)
+
+| Metric | Unisphere key | Unit |
+|---|---|---|
+| `pmax_cache_partition_wp_count` | WPCount | slots |
+| `pmax_cache_partition_used_percent` | PercentCacheUsed | % |
+| `pmax_cache_partition_wp_utilization_percent` | PercentWPUtilization | % |
+| `pmax_cache_partition_host_iops` | HostIOs | IO/s |
+| `pmax_cache_partition_host_megabytes_per_second` | HostMBs | MB/s |
+| `pmax_cache_partition_hit_percent` | PercentHit | % |
+
 ## Storage group performance (`/performance/StorageGroup`)
 
 | Metric | Unisphere key | Unit |
@@ -107,7 +146,22 @@ page.
 | `pmax_srp_host_megabytes_per_second` | HostMBs | MB/s |
 | `pmax_srp_response_time_milliseconds` | ResponseTime | ms |
 
+## Volume performance (`/performance/Volume`) — opt-in
+
+**Disabled by default** (one series set per device — high cardinality). Enable with
+`collection.volumeMetrics: true`; scope with `collection.volumeStorageGroups`. Queries
+are batched: one POST per ≤10 storage groups returns per-volume entries. Labels:
+`array`, `storage_group`, `volume`.
+
+| Metric | Unisphere key | Unit |
+|---|---|---|
+| `pmax_volume_read_iops` | Reads | IO/s |
+| `pmax_volume_write_iops` | Writes | IO/s |
+| `pmax_volume_read_megabytes_per_second` | MBRead | MB/s |
+| `pmax_volume_write_megabytes_per_second` | MBWritten | MB/s |
+| `pmax_volume_read_response_time_milliseconds` | ReadResponseTime | ms |
+| `pmax_volume_write_response_time_milliseconds` | WriteResponseTime | ms |
+
 ## Deferred (backlog)
 
-FE/BE port categories (per-director keys = N+1 discovery), volume-level metrics,
-cache-partition metrics, real-time (1-minute) performance API.
+RDF ports, real-time (1-minute) performance API.

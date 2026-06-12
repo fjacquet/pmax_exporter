@@ -15,6 +15,8 @@ collection:
   interval: "5m"      # diagnostic perf granularity is 5 min — faster polling re-reads the same point
   timeout: "120s"     # per-instance cycle budget
   maxConcurrent: 8    # cap on in-flight per-object performance POSTs per instance
+  volumeMetrics: false        # opt-in per-volume perf (high cardinality!)
+  volumeStorageGroups: []     # optional SG scope for volume metrics; empty = all SGs
 
 otel:
   enabled: false      # optional OTLP gRPC metric push (dual export)

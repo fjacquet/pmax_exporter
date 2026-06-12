@@ -81,45 +81,78 @@ func (p Perf) Collect(ctx context.Context, c pmaxclient.Client, arrays []ArrayWi
 }
 
 // perfObject is one queryable object within an array: the array itself
-// (id == "") or a director/storage group/SRP, with its own newest-datapoint
-// timestamp from the keys endpoint.
+// (id == ""), a director/storage group/SRP, or a port (id + parentID), with its
+// own newest-datapoint timestamp from the keys endpoint.
 type perfObject struct {
-	id   string
-	last int64
+	parentID string // set only for two-level categories (ports)
+	id       string
+	last     int64
 }
 
-// discoverObjects lists the category's objects for one array. The array-level
-// category has exactly one object — the array — and needs no keys call.
-func (p Perf) discoverObjects(ctx context.Context, c pmaxclient.Client, a ArrayWindow) ([]perfObject, error) {
-	if p.Cat.IDField == "" {
-		return []perfObject{{id: "", last: a.Last}}, nil
-	}
-	// Keys responses wrap the entry list in a single category-specific field
-	// (feDirectorInfo, storageGroupInfo, …): decode the wrapper generically and
-	// take the only list present, so one parser fits every category.
+// postKeys POSTs a /performance/{category}/keys endpoint and returns its entry
+// list. Keys responses wrap the list in a single category-specific field
+// (feDirectorInfo, storageGroupInfo, …): decode the wrapper generically and
+// take the only list present, so one parser fits every category.
+func postKeys(ctx context.Context, c pmaxclient.Client, category string, body map[string]string) ([]map[string]any, error) {
 	var raw map[string][]map[string]any
-	if err := c.Post(ctx, RestBase+"/performance/"+p.Cat.Category+"/keys",
-		map[string]string{"symmetrixId": a.ID}, &raw); err != nil {
+	if err := c.Post(ctx, RestBase+"/performance/"+category+"/keys", body, &raw); err != nil {
 		return nil, err
 	}
-	var entries []map[string]any
 	for _, v := range raw {
 		if len(v) > 0 {
-			entries = v
-			break
+			return v, nil
 		}
 	}
+	return nil, nil
+}
+
+// keyEntries extracts {id, lastAvailableDate} pairs from a keys entry list.
+func keyEntries(entries []map[string]any, idField string, fallbackLast int64) []perfObject {
 	var out []perfObject
 	for _, e := range entries {
-		id, _ := e[p.Cat.IDField].(string)
+		id, _ := e[idField].(string)
 		if id == "" {
 			continue
 		}
-		last := a.Last
+		last := fallbackLast
 		if ts, ok := toFloat(e["lastAvailableDate"]); ok && ts > 0 {
 			last = int64(ts)
 		}
 		out = append(out, perfObject{id: id, last: last})
+	}
+	return out
+}
+
+// discoverObjects lists the category's objects for one array. The array-level
+// category has exactly one object — the array — and needs no keys call.
+// Two-level categories (ports) list the parent category first, then query the
+// child keys endpoint once per parent.
+func (p Perf) discoverObjects(ctx context.Context, c pmaxclient.Client, a ArrayWindow) ([]perfObject, error) {
+	if p.Cat.IDField == "" {
+		return []perfObject{{id: "", last: a.Last}}, nil
+	}
+	if p.Cat.Parent == nil {
+		entries, err := postKeys(ctx, c, p.Cat.Category, map[string]string{"symmetrixId": a.ID})
+		if err != nil {
+			return nil, err
+		}
+		return keyEntries(entries, p.Cat.IDField, a.Last), nil
+	}
+	parentEntries, err := postKeys(ctx, c, p.Cat.Parent.Category, map[string]string{"symmetrixId": a.ID})
+	if err != nil {
+		return nil, fmt.Errorf("%s parent keys: %w", p.Cat.Parent.Category, err)
+	}
+	var out []perfObject
+	for _, parent := range keyEntries(parentEntries, p.Cat.Parent.IDField, a.Last) {
+		entries, err := postKeys(ctx, c, p.Cat.Category,
+			map[string]string{"symmetrixId": a.ID, p.Cat.Parent.IDField: parent.id})
+		if err != nil {
+			return nil, fmt.Errorf("%s keys for %s: %w", p.Cat.Category, parent.id, err)
+		}
+		for _, o := range keyEntries(entries, p.Cat.IDField, parent.last) {
+			o.parentID = parent.id
+			out = append(out, o)
+		}
 	}
 	return out, nil
 }
@@ -141,6 +174,9 @@ func (p Perf) queryObject(ctx context.Context, c pmaxclient.Client, a ArrayWindo
 	if p.Cat.IDField != "" {
 		body[p.Cat.IDField] = o.id
 	}
+	if p.Cat.Parent != nil {
+		body[p.Cat.Parent.IDField] = o.parentID
+	}
 	var resp metricsResp
 	if err := c.Post(ctx, RestBase+"/performance/"+p.Cat.Category+"/metrics", body, &resp); err != nil {
 		return nil, err
@@ -150,6 +186,9 @@ func (p Perf) queryObject(ctx context.Context, c pmaxclient.Client, a ArrayWindo
 		return nil, nil // no datapoint at that timestamp — absent, not zero
 	}
 	labels := []Label{{Key: "array", Value: a.ID}}
+	if p.Cat.Parent != nil {
+		labels = append(labels, Label{Key: p.Cat.Parent.Label, Value: o.parentID})
+	}
 	if p.Cat.IDField != "" {
 		labels = append(labels, Label{Key: p.Cat.ObjLabel, Value: o.id})
 	}

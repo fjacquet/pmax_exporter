@@ -33,8 +33,12 @@ make release-snapshot # GoReleaser dry-run
 - **Generic perf engine** (`perf.go` + `catalog.go`): every Unisphere performance
   category is `POST /performance/{Cat}/keys` → one `POST /performance/{Cat}/metrics`
   per object (`startDate=endDate=lastAvailableDate`, `dataFormat:"Average"`), fanned
-  out with errgroup `SetLimit(collection.maxConcurrent)`. New categories = catalog
-  entries, not new code.
+  out with errgroup `SetLimit(collection.maxConcurrent)`. Two-level categories
+  (FE/BE ports) set `Parent` in the catalog — child keys are POSTed once per parent
+  director. New categories = catalog entries, not new code.
+- **Volume metrics are opt-in** (`volume.go`, `collection.volumeMetrics`) — one series
+  set per device. Batched: one `POST /performance/Volume/metrics` per ≤10 storage
+  groups (`storageGroups` comma-list), the only batched per-object path Unisphere has.
 - `internal/config` — yaml + `${ENV}` fail-fast interpolation + `passwordFile` +
   `.env` (godotenv; real env always wins).
 

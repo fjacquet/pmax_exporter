@@ -111,7 +111,10 @@ func run(cfgPath string, once, debug, trace bool) error {
 	startLoop := func(c *config.Config) {
 		targets := buildTargets(c, trace)
 		col := pmax.NewCollector(targets,
-			pmax.Registry(c.Collection.MaxConcurrent),
+			pmax.Registry(c.Collection.MaxConcurrent, pmax.VolumeOptions{
+				Enabled:       c.Collection.VolumeMetrics,
+				StorageGroups: c.Collection.VolumeStorageGroups,
+			}),
 			store, c.Collection.Interval, c.Collection.Timeout)
 		log.Info("running collection cycle")
 		col.CollectOnce(ctx)
