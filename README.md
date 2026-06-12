@@ -1,13 +1,12 @@
 # pmax_exporter
 
 [![CI](https://github.com/fjacquet/pmax_exporter/actions/workflows/ci.yml/badge.svg)](https://github.com/fjacquet/pmax_exporter/actions/workflows/ci.yml)
-[![Release](https://github.com/fjacquet/pmax_exporter/actions/workflows/release.yml/badge.svg)](https://github.com/fjacquet/pmax_exporter/actions/workflows/release.yml)
-[![Docs](https://github.com/fjacquet/pmax_exporter/actions/workflows/docs.yml/badge.svg)](https://fjacquet.github.io/pmax_exporter/)
-[![Latest release](https://img.shields.io/github/v/release/fjacquet/pmax_exporter?logo=github&sort=semver)](https://github.com/fjacquet/pmax_exporter/releases/latest)
+[![Latest release](https://img.shields.io/github/v/release/fjacquet/pmax_exporter?include_prereleases&sort=semver&logo=github)](https://github.com/fjacquet/pmax_exporter/releases/latest)
 [![Go Report Card](https://goreportcard.com/badge/github.com/fjacquet/pmax_exporter)](https://goreportcard.com/report/github.com/fjacquet/pmax_exporter)
 [![Go version](https://img.shields.io/github/go-mod/go-version/fjacquet/pmax_exporter?logo=go&logoColor=white)](go.mod)
-[![Container image](https://img.shields.io/badge/GHCR-pmax__exporter-2496ED?logo=docker&logoColor=white)](https://github.com/fjacquet/pmax_exporter/pkgs/container/pmax_exporter)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Docs](https://github.com/fjacquet/pmax_exporter/actions/workflows/docs.yml/badge.svg)](https://fjacquet.github.io/pmax_exporter/)
+[![Container image](https://img.shields.io/badge/GHCR-pmax__exporter-2496ED?logo=docker&logoColor=white)](https://github.com/fjacquet/pmax_exporter/pkgs/container/pmax_exporter)
 
 Prometheus + OTLP exporter for **Dell PowerMax**, via the Unisphere for PowerMax REST
 API. One process monitors any number of Unisphere instances and arrays.
