@@ -16,6 +16,8 @@ make ci               # the gate: fmt-check, vet, golangci-lint, test -race, gov
 make sure             # quick local gate
 make cli              # build bin/pmax_exporter
 make release-snapshot # GoReleaser dry-run
+git tag vX.Y.Z && git push origin vX.Y.Z   # release: GoReleaser + GHCR image via release.yml
+docker compose up -d  # demo stack: exporter :9104, Prometheus :9090, Grafana :3000 (dashboards auto-provisioned)
 ./bin/pmax_exporter --config config.yaml --once --debug   # sample dump (sorted exposition)
 ./bin/pmax_exporter --trace                               # body-only API tracing (credential-safe)
 ```
@@ -60,6 +62,9 @@ make release-snapshot # GoReleaser dry-run
   until live-validated (ADR-0009); cross-check against PyU4V/pmaxperfpy before editing.
 - **Never log credentials**: no resty `SetDebug`; `--trace` is a body-only
   `OnAfterResponse` hook with a test asserting no leak.
+- **Grafana dashboards hardcode metric names** (`grafana/dashboards/*.json`): renaming
+  a catalog metric (e.g. after ADR-0009 live validation) must update the dashboard
+  queries in the same commit — nothing else will catch the drift.
 - Default collection interval 5m = diagnostic granularity; don't "optimize" it down.
 - No inline semgrep/`nolint` suppressions — restructure instead.
 
@@ -68,6 +73,10 @@ make release-snapshot # GoReleaser dry-run
 `go test -race ./...` — mock-driven (`pmaxclient.Mock`); collector assertions go through
 **both** the Prometheus registry gather and the OTLP `ManualReader`. The client is tested
 against `httptest.NewTLSServer` (auth header, 5xx-vs-4xx retry, trace no-leak).
+
+Gotcha: `Mock.SetPostFunc` is consulted **before** static `SetPostJSON` registrations —
+a postFunc must return `(_, false)` for paths it doesn't own (e.g. keys POSTs), or it
+silently swallows them and the test fails with a confusing parse error.
 
 ## CI/CD
 
