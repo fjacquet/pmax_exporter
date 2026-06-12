@@ -162,6 +162,19 @@ are batched: one POST per ≤10 storage groups returns per-volume entries. Label
 | `pmax_volume_read_response_time_milliseconds` | ReadResponseTime | ms |
 | `pmax_volume_write_response_time_milliseconds` | WriteResponseTime | ms |
 
+## Volume (LUN) inventory — opt-in
+
+**Disabled by default**; enable with `collection.volumeInventory: true` (one GET per
+volume per cycle — scope with `collection.volumeStorageGroups`). Source:
+`GET /{ver}/sloprovisioning/symmetrix/{id}/volume?storageGroupId=…` + per-volume detail.
+Only the first list page (1000 volumes per SG) is read; truncation is logged.
+
+| Metric | Labels | Unit |
+|---|---|---|
+| `pmax_volume_capacity_gigabytes` | server, array, volume | GB |
+| `pmax_volume_allocated_percent` | server, array, volume | % |
+| `pmax_volume_info` | server, array, volume, wwn, identifier, type, storage_groups | 1 |
+
 ## Deferred (backlog)
 
 RDF ports, real-time (1-minute) performance API.

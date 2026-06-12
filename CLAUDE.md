@@ -36,9 +36,13 @@ make release-snapshot # GoReleaser dry-run
   out with errgroup `SetLimit(collection.maxConcurrent)`. Two-level categories
   (FE/BE ports) set `Parent` in the catalog — child keys are POSTed once per parent
   director. New categories = catalog entries, not new code.
-- **Volume metrics are opt-in** (`volume.go`, `collection.volumeMetrics`) — one series
-  set per device. Batched: one `POST /performance/Volume/metrics` per ≤10 storage
-  groups (`storageGroups` comma-list), the only batched per-object path Unisphere has.
+- **Volume (LUN) collectors are opt-in** — one series set per device.
+  `volume.go` (`collection.volumeMetrics`): perf, batched — one
+  `POST /performance/Volume/metrics` per ≤10 storage groups (`storageGroups`
+  comma-list), the only batched per-object path Unisphere has.
+  `volume_inventory.go` (`collection.volumeInventory`): capacity + identity
+  (WWN/identifier) via sloprovisioning volume list per SG (first page only,
+  truncation logged) + one GET per volume.
 - `internal/config` — yaml + `${ENV}` fail-fast interpolation + `passwordFile` +
   `.env` (godotenv; real env always wins).
 

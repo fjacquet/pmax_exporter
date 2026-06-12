@@ -27,11 +27,14 @@ var volumeMetricDefs = []MetricDef{
 // returns per-volume entries — the only batched per-object path Unisphere has).
 const volumeChunkSize = 10
 
-// VolumeOptions configures the opt-in volume collector. Volume metrics are
-// high-cardinality (one series set per device), so they are disabled unless
-// collection.volumeMetrics is set; StorageGroups optionally restricts scope.
+// VolumeOptions configures the opt-in volume (LUN) collectors. Volume series
+// are high-cardinality (one set per device), so performance is off unless
+// collection.volumeMetrics is set and identity/capacity off unless
+// collection.volumeInventory is set; StorageGroups optionally restricts the
+// scope of both.
 type VolumeOptions struct {
-	Enabled       bool
+	Enabled       bool // per-volume performance (collection.volumeMetrics)
+	Inventory     bool // per-volume identity + capacity (collection.volumeInventory)
 	StorageGroups []string
 }
 

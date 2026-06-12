@@ -53,6 +53,7 @@ type Collection struct {
 	Timeout             time.Duration `yaml:"timeout"`
 	MaxConcurrent       int           `yaml:"maxConcurrent"`
 	VolumeMetrics       bool          `yaml:"volumeMetrics"`
+	VolumeInventory     bool          `yaml:"volumeInventory"`
 	VolumeStorageGroups []string      `yaml:"volumeStorageGroups"`
 }
 

@@ -1,0 +1,138 @@
+{
+  "annotations": {"list": []},
+  "editable": true,
+  "graphTooltip": 1,
+  "title": "PowerMax — LUN deep dive",
+  "uid": "pmax-lun-deep-dive",
+  "tags": ["pmax", "powermax", "dell", "storage", "lun"],
+  "timezone": "",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "1m",
+  "time": {"from": "now-6h", "to": "now"},
+  "templating": {
+    "list": [
+      {
+        "name": "server",
+        "label": "Unisphere",
+        "type": "query",
+        "datasource": {"type": "prometheus", "uid": "prometheus"},
+        "query": "label_values(pmax_up, server)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "current": {"text": "All", "value": "$__all"}
+      },
+      {
+        "name": "array",
+        "label": "Array",
+        "type": "query",
+        "datasource": {"type": "prometheus", "uid": "prometheus"},
+        "query": "label_values(pmax_array_perf_timestamp_seconds{server=~\"$server\"}, array)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "current": {"text": "All", "value": "$__all"}
+      },
+      {
+        "name": "storage_group",
+        "label": "Storage group",
+        "type": "query",
+        "datasource": {"type": "prometheus", "uid": "prometheus"},
+        "query": "label_values(pmax_volume_read_iops{server=~\"$server\", array=~\"$array\"}, storage_group)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "current": {"text": "All", "value": "$__all"}
+      },
+      {
+        "name": "volume",
+        "label": "Volume (LUN)",
+        "type": "query",
+        "datasource": {"type": "prometheus", "uid": "prometheus"},
+        "query": "label_values(pmax_volume_read_iops{server=~\"$server\", array=~\"$array\", storage_group=~\"$storage_group\"}, volume)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "current": {"text": "All", "value": "$__all"}
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1, "type": "text", "title": "",
+      "gridPos": {"h": 3, "w": 18, "x": 0, "y": 0},
+      "options": {"mode": "markdown", "content": "**LUN-level series are opt-in** — set `collection.volumeMetrics: true` (performance) and `collection.volumeInventory: true` (capacity & identity) in the exporter config, ideally scoped with `collection.volumeStorageGroups`. Empty panels mean the opt-ins are off."}
+    },
+    {
+      "id": 2, "type": "stat", "title": "LUNs reporting",
+      "gridPos": {"h": 3, "w": 6, "x": 18, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"expr": "count(count by (array, volume) (pmax_volume_read_iops{server=~\"$server\", array=~\"$array\", storage_group=~\"$storage_group\"}))", "instant": true}],
+      "fieldConfig": {"defaults": {"thresholds": {"mode": "absolute", "steps": [{"color": "blue", "value": null}]}}, "overrides": []},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "colorMode": "value"}
+    },
+
+    {
+      "id": 10, "type": "timeseries", "title": "LUN IOPS (top 20)",
+      "gridPos": {"h": 9, "w": 12, "x": 0, "y": 3},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [
+        {"expr": "topk(20, pmax_volume_read_iops{server=~\"$server\", array=~\"$array\", storage_group=~\"$storage_group\", volume=~\"$volume\"})", "legendFormat": "{{array}} {{volume}} read"},
+        {"expr": "topk(20, pmax_volume_write_iops{server=~\"$server\", array=~\"$array\", storage_group=~\"$storage_group\", volume=~\"$volume\"})", "legendFormat": "{{array}} {{volume}} write"}
+      ],
+      "fieldConfig": {"defaults": {"unit": "iops", "custom": {"fillOpacity": 8}}, "overrides": []},
+      "options": {"legend": {"displayMode": "table", "calcs": ["lastNotNull", "max"]}}
+    },
+    {
+      "id": 11, "type": "timeseries", "title": "LUN bandwidth (top 20)",
+      "gridPos": {"h": 9, "w": 12, "x": 12, "y": 3},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [
+        {"expr": "topk(20, pmax_volume_read_megabytes_per_second{server=~\"$server\", array=~\"$array\", storage_group=~\"$storage_group\", volume=~\"$volume\"})", "legendFormat": "{{array}} {{volume}} read"},
+        {"expr": "topk(20, pmax_volume_write_megabytes_per_second{server=~\"$server\", array=~\"$array\", storage_group=~\"$storage_group\", volume=~\"$volume\"})", "legendFormat": "{{array}} {{volume}} write"}
+      ],
+      "fieldConfig": {"defaults": {"unit": "MBs", "custom": {"fillOpacity": 8}}, "overrides": []},
+      "options": {"legend": {"displayMode": "table", "calcs": ["lastNotNull", "max"]}}
+    },
+
+    {
+      "id": 20, "type": "timeseries", "title": "LUN response time (top 20)",
+      "gridPos": {"h": 9, "w": 12, "x": 0, "y": 12},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [
+        {"expr": "topk(20, pmax_volume_read_response_time_milliseconds{server=~\"$server\", array=~\"$array\", storage_group=~\"$storage_group\", volume=~\"$volume\"})", "legendFormat": "{{array}} {{volume}} read"},
+        {"expr": "topk(20, pmax_volume_write_response_time_milliseconds{server=~\"$server\", array=~\"$array\", storage_group=~\"$storage_group\", volume=~\"$volume\"})", "legendFormat": "{{array}} {{volume}} write"}
+      ],
+      "fieldConfig": {"defaults": {"unit": "ms", "custom": {"fillOpacity": 8}}, "overrides": []},
+      "options": {"legend": {"displayMode": "table", "calcs": ["lastNotNull", "max"]}}
+    },
+    {
+      "id": 21, "type": "bargauge", "title": "LUN allocated % (top 20)",
+      "gridPos": {"h": 9, "w": 12, "x": 12, "y": 12},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"expr": "topk(20, pmax_volume_allocated_percent{server=~\"$server\", array=~\"$array\", volume=~\"$volume\"})", "legendFormat": "{{array}} {{volume}}", "instant": true}],
+      "fieldConfig": {"defaults": {"unit": "percent", "min": 0, "max": 100, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 70}, {"color": "red", "value": 90}]}}, "overrides": []},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "displayMode": "gradient", "orientation": "horizontal"}
+    },
+
+    {
+      "id": 30, "type": "table", "title": "LUN identity & capacity",
+      "gridPos": {"h": 10, "w": 24, "x": 0, "y": 21},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [
+        {"expr": "pmax_volume_info{server=~\"$server\", array=~\"$array\", volume=~\"$volume\"}", "format": "table", "instant": true, "refId": "A"},
+        {"expr": "pmax_volume_capacity_gigabytes{server=~\"$server\", array=~\"$array\", volume=~\"$volume\"}", "format": "table", "instant": true, "refId": "B"}
+      ],
+      "transformations": [
+        {"id": "joinByField", "options": {"byField": "volume", "mode": "outer"}},
+        {"id": "organize", "options": {
+          "excludeByName": {"Time 1": true, "Time 2": true, "Value #A": true, "__name__ 1": true, "__name__ 2": true, "server 2": true, "array 2": true, "job 1": true, "job 2": true, "instance 1": true, "instance 2": true},
+          "renameByName": {"server 1": "server", "array 1": "array", "Value #B": "capacity (GB)", "identifier": "identifier", "wwn": "WWN", "storage_groups": "storage groups", "type": "type"}
+        }}
+      ],
+      "fieldConfig": {"defaults": {}, "overrides": [{"matcher": {"id": "byName", "options": "capacity (GB)"}, "properties": [{"id": "unit", "value": "decgbytes"}, {"id": "decimals", "value": 1}]}]},
+      "options": {"sortBy": [{"displayName": "capacity (GB)", "desc": true}]}
+    }
+  ]
+}

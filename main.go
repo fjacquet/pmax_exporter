@@ -113,6 +113,7 @@ func run(cfgPath string, once, debug, trace bool) error {
 		col := pmax.NewCollector(targets,
 			pmax.Registry(c.Collection.MaxConcurrent, pmax.VolumeOptions{
 				Enabled:       c.Collection.VolumeMetrics,
+				Inventory:     c.Collection.VolumeInventory,
 				StorageGroups: c.Collection.VolumeStorageGroups,
 			}),
 			store, c.Collection.Interval, c.Collection.Timeout)

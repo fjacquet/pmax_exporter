@@ -42,5 +42,8 @@ func Registry(maxConcurrent int, vol VolumeOptions) []ResourceCollector {
 	if vol.Enabled {
 		out = append(out, Volume{Opts: vol, MaxConcurrent: maxConcurrent})
 	}
+	if vol.Inventory {
+		out = append(out, VolumeInventory{Opts: vol, MaxConcurrent: maxConcurrent})
+	}
 	return out
 }

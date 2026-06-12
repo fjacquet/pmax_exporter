@@ -140,14 +140,12 @@ func TestRegistryContainsAllPerfCategories(t *testing.T) {
 		t.Fatal("volume collector must be opt-in (disabled by default)")
 	}
 
-	reg = Registry(4, VolumeOptions{Enabled: true})
-	found := false
+	reg = Registry(4, VolumeOptions{Enabled: true, Inventory: true})
+	got := map[string]bool{}
 	for _, rc := range reg {
-		if rc.Name() == "perf_volume" {
-			found = true
-		}
+		got[rc.Name()] = true
 	}
-	if !found {
-		t.Fatal("volume collector missing when enabled")
+	if !got["perf_volume"] || !got["volume_inventory"] {
+		t.Fatalf("volume collectors missing when enabled: %v", got)
 	}
 }
