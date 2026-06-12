@@ -1,0 +1,29 @@
+# Quickstart stack: pmax_exporter + Prometheus.
+# 1. cp .env.example .env  (set PMAX1_HOSTNAME / PMAX1_USERNAME / PMAX1_PASSWORD)
+# 2. docker compose up -d
+# 3. open http://localhost:9090 (Prometheus) — query pmax_up
+#
+# Single-target quickstart only: config.yaml is the source of truth; for more
+# Unisphere instances add one `servers:` entry each (".env is nice, config.yaml
+# is the way").
+services:
+  pmax_exporter:
+    image: ghcr.io/fjacquet/pmax_exporter:${PMAX_TAG:-latest}
+    build: .
+    restart: unless-stopped
+    environment:
+      PMAX1_HOSTNAME: ${PMAX1_HOSTNAME:-unisphere01.example.com}
+      PMAX1_USERNAME: ${PMAX1_USERNAME:-pmax-monitor}
+      PMAX1_PASSWORD: ${PMAX1_PASSWORD:-changeme}
+    volumes:
+      - ./config.yaml:/etc/pmax_exporter/config.yaml:ro
+    ports:
+      - "9104:9104"
+
+  prometheus:
+    image: prom/prometheus:latest
+    restart: unless-stopped
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"

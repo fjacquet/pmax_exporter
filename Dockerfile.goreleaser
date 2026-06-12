@@ -1,0 +1,7 @@
+# Release image: copies the prebuilt GoReleaser binary (no in-image compile).
+FROM gcr.io/distroless/static:nonroot
+COPY pmax_exporter /pmax_exporter
+USER nonroot:nonroot
+EXPOSE 9104
+ENTRYPOINT ["/pmax_exporter"]
+CMD ["--config", "/etc/pmax_exporter/config.yaml"]
