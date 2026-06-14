@@ -49,7 +49,7 @@ func TestDashboardRefsEmitted(t *testing.T) {
 }
 
 func TestInventoryFieldsInSpec(t *testing.T) {
-	props := specResponseProps(t, spec104Path, "/volume/{volumeId}")
+	props := specResponseProps(t, spec104Path, "/sloprovisioning/symmetrix/{symmetrixId}/volume/{volumeId}")
 	// JSON tags decoded by volumeDetailResp in volume_inventory.go.
 	fields := []string{
 		"volumeId", "cap_gb", "allocated_percent",

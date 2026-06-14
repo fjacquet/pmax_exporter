@@ -177,8 +177,10 @@ func dashboardRefs(t *testing.T) map[string][]string {
 }
 
 // specResponseProps returns the property names of the 200 response schema for the
-// first path whose key ends with pathSuffix (paths are version-prefixed, e.g.
-// /104/sloprovisioning/.../volume/{volumeId}).
+// path whose key ends with pathSuffix (paths are version-prefixed, e.g.
+// /104/sloprovisioning/symmetrix/{symmetrixId}/volume/{volumeId}).
+// pathSuffix must uniquely identify exactly one path; if zero or more than one
+// path matches, the test fails with a deterministic fatal error.
 func specResponseProps(t *testing.T, path, pathSuffix string) map[string]bool {
 	t.Helper()
 	raw, err := os.ReadFile(path)
@@ -210,21 +212,28 @@ func specResponseProps(t *testing.T, path, pathSuffix string) map[string]bool {
 	if err := json.Unmarshal(raw, &doc); err != nil {
 		t.Fatalf("parse spec: %v", err)
 	}
-	for p, item := range doc.Paths {
+	var matched []string
+	for p := range doc.Paths {
 		if len(p) >= len(pathSuffix) && p[len(p)-len(pathSuffix):] == pathSuffix {
-			name := item.Get.Responses.OK.Content.JSON.Schema.Ref
-			if i := lastSlash(name); i >= 0 {
-				name = name[i+1:]
-			}
-			props := map[string]bool{}
-			for k := range doc.Components.Schemas[name].Properties {
-				props[k] = true
-			}
-			return props
+			matched = append(matched, p)
 		}
 	}
-	t.Fatalf("no path ending %q in %s", pathSuffix, path)
-	return nil
+	if len(matched) == 0 {
+		t.Fatalf("no path ending %q in %s", pathSuffix, path)
+	}
+	if len(matched) > 1 {
+		t.Fatalf("ambiguous: %d paths end %q in %s: %v", len(matched), pathSuffix, path, matched)
+	}
+	item := doc.Paths[matched[0]]
+	name := item.Get.Responses.OK.Content.JSON.Schema.Ref
+	if i := lastSlash(name); i >= 0 {
+		name = name[i+1:]
+	}
+	props := map[string]bool{}
+	for k := range doc.Components.Schemas[name].Properties {
+		props[k] = true
+	}
+	return props
 }
 
 func TestSpecMetricsLoads(t *testing.T) {
