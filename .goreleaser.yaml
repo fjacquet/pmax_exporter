@@ -20,8 +20,15 @@ builds:
     binary: pmax_exporter
     env:
       - CGO_ENABLED=0
-    goos: [linux, darwin]
+    # Windows is shipped so a Windows-based storage admin can run
+    # `pmax_exporter.exe --trace` to capture live Unisphere samples for catalog
+    # validation (ADR-0009); it is not a primary deployment target.
+    goos: [linux, darwin, windows]
     goarch: [amd64, arm64]
+    # Windows on ARM is not a real target here — skip it, ship windows/amd64 only.
+    ignore:
+      - goos: windows
+        goarch: arm64
     flags:
       - -trimpath
     # Mirrors the Makefile LDFLAGS: strip + inject main.version.
@@ -31,9 +38,13 @@ builds:
     mod_timestamp: "{{ .CommitTimestamp }}"
 
 archives:
-  # tar.gz archives bundling the licence, README, and a sample config.
+  # tar.gz archives bundling the licence, README, and a sample config
+  # (zip on Windows, per platform convention).
   - id: pmax_exporter
     formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
     name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
     files:
       - LICENSE
