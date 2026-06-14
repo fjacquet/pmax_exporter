@@ -1,7 +1,12 @@
 # Provisional API mappings & live validation
 
 ## Status
-Accepted (mappings provisional until validated against a live Unisphere).
+Accepted (mappings provisional until validated against a live Unisphere). Partially
+addressed by [ADR-0010](0010-spec-validation-ci-gate.md): the catalog is now CI-validated
+against the vendored Unisphere OpenAPI spec, which confirms a key *exists* in the API.
+A live-array run (eased by the Windows trace binary, [ADR-0011](0011-windows-binary-for-trace-capture.md))
+is still required to confirm *this array reports it*; live-only deviations go in the
+`specExceptions` allowlist.
 
 ## Context
 This exporter was built against documentation and reference implementations
