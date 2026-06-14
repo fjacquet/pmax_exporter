@@ -10,7 +10,7 @@ release tag.
 
 ```bash
 docker run -d --name pmax_exporter \
-  -p 9104:9104 \
+  -p 9443:9443 \
   -v $(pwd)/config.yaml:/etc/pmax_exporter/config.yaml:ro \
   -e PMAX1_HOSTNAME=unisphere01.example.com \
   -e PMAX1_USERNAME=pmax-monitor \
@@ -28,7 +28,7 @@ scrape_configs:
   - job_name: pmax_exporter
     scrape_interval: 1m        # snapshot refreshes every 5m; 1m scrapes are cheap reads
     static_configs:
-      - targets: ['pmax_exporter:9104']
+      - targets: ['pmax_exporter:9443']
 ```
 
 ## Compose

@@ -7,7 +7,7 @@ Guidance for Claude Code in this repository. Family standard: `/exporter-standar
 
 `pmax_exporter` — Prometheus + OTLP exporter for Dell PowerMax via the Unisphere REST
 API. Go 1.26.4, hand-rolled `resty/v2` client (ADR-0003: `gopowermax` declined — perf
-coverage is CSI-scoped). Metric prefix `pmax_`, port **9104**.
+coverage is CSI-scoped). Metric prefix `pmax_`, port **9443**.
 
 ## Commands
 
@@ -17,7 +17,7 @@ make sure             # quick local gate
 make cli              # build bin/pmax_exporter
 make release-snapshot # GoReleaser dry-run
 git tag vX.Y.Z && git push origin vX.Y.Z   # release: GoReleaser + GHCR image via release.yml
-docker compose up -d  # demo stack: exporter :9104, Prometheus :9090, Grafana :3000 (dashboards auto-provisioned)
+docker compose up -d  # demo stack: exporter :9443, Prometheus :9090, Grafana :3000 (dashboards auto-provisioned)
 ./bin/pmax_exporter --config config.yaml --once --debug   # sample dump (sorted exposition)
 ./bin/pmax_exporter --trace                               # body-only API tracing (credential-safe)
 ```

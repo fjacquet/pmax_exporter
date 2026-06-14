@@ -33,8 +33,8 @@ API. One process monitors any number of Unisphere instances and arrays.
 
 ```bash
 cp .env.example .env        # set PMAX1_HOSTNAME / PMAX1_USERNAME / PMAX1_PASSWORD
-docker compose up -d        # exporter (:9104) + Prometheus (:9090) + Grafana (:3000)
-curl -s localhost:9104/metrics | grep pmax_up
+docker compose up -d        # exporter (:9443) + Prometheus (:9090) + Grafana (:3000)
+curl -s localhost:9443/metrics | grep pmax_up
 ```
 
 Or bare metal:
@@ -61,3 +61,15 @@ performance API coverage is CSI-scoped (ADR-0003).
 ## License
 
 [MIT](LICENSE)
+
+## Node Exporter Full (Grafana 1860)
+
+This repo bundles the community [Node Exporter Full](https://grafana.com/grafana/dashboards/1860-node-exporter-full/)
+dashboard (`node-exporter-full.json`, auto-provisioned). It visualizes **host OS** metrics
+(CPU, memory, disk, network) exposed by [`prom/node-exporter`](https://hub.docker.com/r/prom/node-exporter) —
+**not** this exporter's own metrics.
+
+`node_exporter` is **not** part of this demo stack: it belongs on the hosts you actually want to
+monitor, not bolted onto the exporter's compose. To use this dashboard, run `prom/node-exporter`
+on those hosts and add a `node-exporter` scrape job to your Prometheus; the dashboard then
+visualizes them.

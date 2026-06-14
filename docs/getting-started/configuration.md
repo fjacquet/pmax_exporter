@@ -8,7 +8,7 @@ natively — already-set environment variables always win.
 ```yaml
 server:
   host: "0.0.0.0"
-  port: "9104"
+  port: "9443"
   uri: "/metrics"
 
 collection:

@@ -19,7 +19,7 @@ services:
     volumes:
       - ./config.yaml:/etc/pmax_exporter/config.yaml:ro
     ports:
-      - "9104:9104"
+      - "9443:9443"
 
   prometheus:
     image: prom/prometheus:latest
