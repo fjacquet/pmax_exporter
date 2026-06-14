@@ -1,6 +1,9 @@
 package pmax
 
-import "testing"
+import (
+	"path/filepath"
+	"testing"
+)
 
 // reportMode keeps the checks logging-only until the catalog/dashboards are
 // reconciled (Phase 2). Flip to false in Phase 3 to make this a CI gate.
@@ -28,6 +31,18 @@ func TestCatalogPerfKeysInSpec(t *testing.T) {
 			if !set[m.Key] {
 				reportf(t, "category %q: key %q (-> %s) not in 10.4 spec enum",
 					cat.Category, m.Key, m.Name)
+			}
+		}
+	}
+}
+
+func TestDashboardRefsEmitted(t *testing.T) {
+	emitted := emittedNames(t)
+	for file, refs := range dashboardRefs(t) {
+		for _, ref := range refs {
+			if !emitted[ref] {
+				reportf(t, "dashboard %s references %q which no collector emits",
+					filepath.Base(file), ref)
 			}
 		}
 	}

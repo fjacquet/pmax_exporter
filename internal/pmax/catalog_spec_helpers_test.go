@@ -3,6 +3,7 @@ package pmax
 import (
 	"encoding/json"
 	"os"
+	"path/filepath"
 	"regexp"
 	"testing"
 )
@@ -121,6 +122,58 @@ func metricsEnumDesc(schema json.RawMessage) string {
 		return s.Properties.Metrics.Items.Description
 	}
 	return s.Properties.Metrics.Description
+}
+
+var pmaxNameRe = regexp.MustCompile(`pmax_[a-z0-9_]+`)
+
+// emittedNames is every pmax_* metric the exporter can emit: the set of pmax_
+// string literals in non-test Go source under internal/pmax. A name only reaches
+// a dashboard if some collector emits a Sample with that literal, so this is the
+// authoritative, drift-proof emitted set (no hand-maintained list).
+func emittedNames(t *testing.T) map[string]bool {
+	t.Helper()
+	set := map[string]bool{}
+	matches, err := filepath.Glob("*.go") // internal/pmax; widen if collectors move
+	if err != nil {
+		t.Fatalf("glob: %v", err)
+	}
+	for _, f := range matches {
+		if len(f) > 8 && f[len(f)-8:] == "_test.go" {
+			continue
+		}
+		b, err := os.ReadFile(f)
+		if err != nil {
+			t.Fatalf("read %s: %v", f, err)
+		}
+		for _, n := range pmaxNameRe.FindAllString(string(b), -1) {
+			set[n] = true
+		}
+	}
+	return set
+}
+
+// dashboardRefs returns every pmax_* metric referenced across the dashboard JSONs.
+func dashboardRefs(t *testing.T) map[string][]string {
+	t.Helper()
+	files, err := filepath.Glob("../../grafana/dashboards/*.json")
+	if err != nil {
+		t.Fatalf("glob dashboards: %v", err)
+	}
+	out := map[string][]string{}
+	for _, f := range files {
+		b, err := os.ReadFile(f)
+		if err != nil {
+			t.Fatalf("read %s: %v", f, err)
+		}
+		seen := map[string]bool{}
+		for _, n := range pmaxNameRe.FindAllString(string(b), -1) {
+			if !seen[n] {
+				seen[n] = true
+				out[f] = append(out[f], n)
+			}
+		}
+	}
+	return out
 }
 
 func TestSpecMetricsLoads(t *testing.T) {
