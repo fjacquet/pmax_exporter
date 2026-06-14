@@ -61,3 +61,20 @@ func TestInventoryFieldsInSpec(t *testing.T) {
 		}
 	}
 }
+
+func TestCatalogSkew92(t *testing.T) {
+	s104 := specMetrics(t, spec104Path)
+	s92 := specMetrics(t, spec92Path)
+	for _, cat := range PerfCategories() {
+		set92, in92 := s92[cat.Category]
+		if !in92 {
+			continue // category absent in 9.2 — not a per-key skew signal
+		}
+		for _, m := range cat.Metrics {
+			if s104[cat.Category][m.Key] && !set92[m.Key] {
+				t.Logf("SKEW: %s key %q present in 10.4 but absent in 9.2",
+					cat.Category, m.Key)
+			}
+		}
+	}
+}
