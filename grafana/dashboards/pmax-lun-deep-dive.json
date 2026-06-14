@@ -7,9 +7,12 @@
   "tags": ["pmax", "powermax", "dell", "storage", "lun"],
   "timezone": "",
   "schemaVersion": 39,
-  "version": 1,
+  "version": 2,
   "refresh": "1m",
   "time": {"from": "now-6h", "to": "now"},
+  "links": [
+    {"title": "Overview", "type": "link", "icon": "external link", "url": "/d/pmax-overview/powermax-overview?var-server=${server}&var-array=${array}", "targetBlank": false, "keepTime": true, "includeVars": false}
+  ],
   "templating": {
     "list": [
       {
@@ -61,55 +64,93 @@
   "panels": [
     {
       "id": 1, "type": "text", "title": "",
-      "gridPos": {"h": 3, "w": 18, "x": 0, "y": 0},
+      "gridPos": {"h": 4, "w": 12, "x": 0, "y": 0},
       "options": {"mode": "markdown", "content": "**LUN-level series are opt-in** — set `collection.volumeMetrics: true` (performance) and `collection.volumeInventory: true` (capacity & identity) in the exporter config, ideally scoped with `collection.volumeStorageGroups`. Empty panels mean the opt-ins are off."}
     },
     {
       "id": 2, "type": "stat", "title": "LUNs reporting",
-      "gridPos": {"h": 3, "w": 6, "x": 18, "y": 0},
+      "description": "Distinct volumes reporting performance data for the current selection.",
+      "gridPos": {"h": 4, "w": 3, "x": 12, "y": 0},
       "datasource": {"type": "prometheus", "uid": "prometheus"},
-      "targets": [{"expr": "count(count by (array, volume) (pmax_volume_read_iops{server=~\"$server\", array=~\"$array\", storage_group=~\"$storage_group\"}))", "instant": true}],
+      "targets": [{"expr": "count(count by (array, volume) (pmax_volume_read_iops{server=~\"$server\", array=~\"$array\", storage_group=~\"$storage_group\", volume=~\"$volume\"}))", "instant": true}],
       "fieldConfig": {"defaults": {"thresholds": {"mode": "absolute", "steps": [{"color": "blue", "value": null}]}}, "overrides": []},
       "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "colorMode": "value"}
     },
+    {
+      "id": 3, "type": "stat", "title": "Total LUN IOPS",
+      "description": "Aggregate read + write IOPS across the selected LUNs.",
+      "gridPos": {"h": 4, "w": 3, "x": 15, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"expr": "sum(pmax_volume_read_iops{server=~\"$server\", array=~\"$array\", storage_group=~\"$storage_group\", volume=~\"$volume\"}) + sum(pmax_volume_write_iops{server=~\"$server\", array=~\"$array\", storage_group=~\"$storage_group\", volume=~\"$volume\"})", "instant": true}],
+      "fieldConfig": {"defaults": {"unit": "iops", "decimals": 0, "thresholds": {"mode": "absolute", "steps": [{"color": "blue", "value": null}]}}, "overrides": []},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "colorMode": "value"}
+    },
+    {
+      "id": 4, "type": "stat", "title": "Worst LUN RT",
+      "description": "Highest LUN response time (read or write) across the selection. Yellow > 1 ms, red > 2 ms.",
+      "gridPos": {"h": 4, "w": 3, "x": 18, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [
+        {"expr": "max(pmax_volume_read_response_time_milliseconds{server=~\"$server\", array=~\"$array\", storage_group=~\"$storage_group\", volume=~\"$volume\"})", "instant": true, "refId": "A"},
+        {"expr": "max(pmax_volume_write_response_time_milliseconds{server=~\"$server\", array=~\"$array\", storage_group=~\"$storage_group\", volume=~\"$volume\"})", "instant": true, "refId": "B"}
+      ],
+      "fieldConfig": {"defaults": {"unit": "ms", "decimals": 2, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 1}, {"color": "red", "value": 2}]}}, "overrides": []},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "colorMode": "background"}
+    },
+    {
+      "id": 5, "type": "stat", "title": "Highest allocated %",
+      "description": "Fullest LUN by allocated percentage across the selection. Yellow > 70%, red > 90%.",
+      "gridPos": {"h": 4, "w": 3, "x": 21, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"expr": "max(pmax_volume_allocated_percent{server=~\"$server\", array=~\"$array\", volume=~\"$volume\"})", "instant": true}],
+      "fieldConfig": {"defaults": {"unit": "percent", "decimals": 1, "min": 0, "max": 100, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 70}, {"color": "red", "value": 90}]}}, "overrides": []},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "colorMode": "background"}
+    },
 
     {
+      "id": 100, "type": "row", "title": "LUN performance", "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 4}, "panels": []
+    },
+    {
       "id": 10, "type": "timeseries", "title": "LUN IOPS (top 20)",
-      "gridPos": {"h": 9, "w": 12, "x": 0, "y": 3},
+      "description": "Twenty busiest LUNs by read/write IOPS.",
+      "gridPos": {"h": 9, "w": 12, "x": 0, "y": 5},
       "datasource": {"type": "prometheus", "uid": "prometheus"},
       "targets": [
         {"expr": "topk(20, pmax_volume_read_iops{server=~\"$server\", array=~\"$array\", storage_group=~\"$storage_group\", volume=~\"$volume\"})", "legendFormat": "{{array}} {{volume}} read"},
         {"expr": "topk(20, pmax_volume_write_iops{server=~\"$server\", array=~\"$array\", storage_group=~\"$storage_group\", volume=~\"$volume\"})", "legendFormat": "{{array}} {{volume}} write"}
       ],
-      "fieldConfig": {"defaults": {"unit": "iops", "custom": {"fillOpacity": 8}}, "overrides": []},
-      "options": {"legend": {"displayMode": "table", "calcs": ["lastNotNull", "max"]}}
+      "fieldConfig": {"defaults": {"unit": "iops", "min": 0, "custom": {"fillOpacity": 8}}, "overrides": []},
+      "options": {"legend": {"displayMode": "table", "calcs": ["lastNotNull", "max"]}, "tooltip": {"mode": "multi", "sort": "desc"}}
     },
     {
       "id": 11, "type": "timeseries", "title": "LUN bandwidth (top 20)",
-      "gridPos": {"h": 9, "w": 12, "x": 12, "y": 3},
+      "description": "Twenty busiest LUNs by read/write throughput (MB/s).",
+      "gridPos": {"h": 9, "w": 12, "x": 12, "y": 5},
       "datasource": {"type": "prometheus", "uid": "prometheus"},
       "targets": [
         {"expr": "topk(20, pmax_volume_read_megabytes_per_second{server=~\"$server\", array=~\"$array\", storage_group=~\"$storage_group\", volume=~\"$volume\"})", "legendFormat": "{{array}} {{volume}} read"},
         {"expr": "topk(20, pmax_volume_write_megabytes_per_second{server=~\"$server\", array=~\"$array\", storage_group=~\"$storage_group\", volume=~\"$volume\"})", "legendFormat": "{{array}} {{volume}} write"}
       ],
-      "fieldConfig": {"defaults": {"unit": "MBs", "custom": {"fillOpacity": 8}}, "overrides": []},
-      "options": {"legend": {"displayMode": "table", "calcs": ["lastNotNull", "max"]}}
+      "fieldConfig": {"defaults": {"unit": "MBs", "min": 0, "custom": {"fillOpacity": 8}}, "overrides": []},
+      "options": {"legend": {"displayMode": "table", "calcs": ["lastNotNull", "max"]}, "tooltip": {"mode": "multi", "sort": "desc"}}
     },
-
     {
       "id": 20, "type": "timeseries", "title": "LUN response time (top 20)",
-      "gridPos": {"h": 9, "w": 12, "x": 0, "y": 12},
+      "description": "Twenty slowest LUNs by read/write response time (ms). Yellow > 1 ms, red > 2 ms.",
+      "gridPos": {"h": 9, "w": 12, "x": 0, "y": 14},
       "datasource": {"type": "prometheus", "uid": "prometheus"},
       "targets": [
         {"expr": "topk(20, pmax_volume_read_response_time_milliseconds{server=~\"$server\", array=~\"$array\", storage_group=~\"$storage_group\", volume=~\"$volume\"})", "legendFormat": "{{array}} {{volume}} read"},
         {"expr": "topk(20, pmax_volume_write_response_time_milliseconds{server=~\"$server\", array=~\"$array\", storage_group=~\"$storage_group\", volume=~\"$volume\"})", "legendFormat": "{{array}} {{volume}} write"}
       ],
-      "fieldConfig": {"defaults": {"unit": "ms", "custom": {"fillOpacity": 8}}, "overrides": []},
-      "options": {"legend": {"displayMode": "table", "calcs": ["lastNotNull", "max"]}}
+      "fieldConfig": {"defaults": {"unit": "ms", "min": 0, "custom": {"fillOpacity": 8, "thresholdsStyle": {"mode": "line"}}, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 1}, {"color": "red", "value": 2}]}, "color": {"mode": "thresholds"}}, "overrides": []},
+      "options": {"legend": {"displayMode": "table", "calcs": ["lastNotNull", "max"]}, "tooltip": {"mode": "multi", "sort": "desc"}}
     },
     {
       "id": 21, "type": "bargauge", "title": "LUN allocated % (top 20)",
-      "gridPos": {"h": 9, "w": 12, "x": 12, "y": 12},
+      "description": "Twenty most-allocated LUNs. Yellow > 70%, red > 90%.",
+      "gridPos": {"h": 9, "w": 12, "x": 12, "y": 14},
       "datasource": {"type": "prometheus", "uid": "prometheus"},
       "targets": [{"expr": "topk(20, pmax_volume_allocated_percent{server=~\"$server\", array=~\"$array\", volume=~\"$volume\"})", "legendFormat": "{{array}} {{volume}}", "instant": true}],
       "fieldConfig": {"defaults": {"unit": "percent", "min": 0, "max": 100, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 70}, {"color": "red", "value": 90}]}}, "overrides": []},
@@ -117,8 +158,13 @@
     },
 
     {
+      "id": 101, "type": "row", "title": "Inventory", "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 23}, "panels": []
+    },
+    {
       "id": 30, "type": "table", "title": "LUN identity & capacity",
-      "gridPos": {"h": 10, "w": 24, "x": 0, "y": 21},
+      "description": "Per-LUN identity (WWN, identifier, type, storage groups) joined with capacity. Sorted by capacity descending.",
+      "gridPos": {"h": 10, "w": 24, "x": 0, "y": 24},
       "datasource": {"type": "prometheus", "uid": "prometheus"},
       "targets": [
         {"expr": "pmax_volume_info{server=~\"$server\", array=~\"$array\", volume=~\"$volume\"}", "format": "table", "instant": true, "refId": "A"},
