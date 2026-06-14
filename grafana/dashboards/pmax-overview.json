@@ -7,9 +7,12 @@
   "tags": ["pmax", "powermax", "dell", "storage"],
   "timezone": "",
   "schemaVersion": 39,
-  "version": 1,
+  "version": 2,
   "refresh": "1m",
   "time": {"from": "now-6h", "to": "now"},
+  "links": [
+    {"title": "LUN deep dive", "type": "link", "icon": "external link", "url": "/d/pmax-lun-deep-dive/powermax-lun-deep-dive?var-server=${server}&var-array=${array}", "targetBlank": false, "keepTime": true, "includeVars": false}
+  ],
   "templating": {
     "list": [
       {
@@ -39,6 +42,7 @@
   "panels": [
     {
       "id": 1, "type": "stat", "title": "Unisphere up",
+      "description": "pmax_up per Unisphere instance. DOWN means the exporter could not reach Unisphere on the last scrape.",
       "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
       "datasource": {"type": "prometheus", "uid": "prometheus"},
       "targets": [{"expr": "pmax_up{server=~\"$server\"}", "legendFormat": "{{server}}", "instant": true}],
@@ -47,7 +51,8 @@
     },
     {
       "id": 2, "type": "stat", "title": "Arrays monitored",
-      "gridPos": {"h": 4, "w": 4, "x": 6, "y": 0},
+      "description": "Distinct arrays reporting performance data for the current selection.",
+      "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
       "datasource": {"type": "prometheus", "uid": "prometheus"},
       "targets": [{"expr": "count(pmax_array_perf_timestamp_seconds{server=~\"$server\", array=~\"$array\"})", "instant": true}],
       "fieldConfig": {"defaults": {"thresholds": {"mode": "absolute", "steps": [{"color": "blue", "value": null}]}}, "overrides": []},
@@ -55,7 +60,8 @@
     },
     {
       "id": 3, "type": "stat", "title": "Perf data age",
-      "gridPos": {"h": 4, "w": 7, "x": 10, "y": 0},
+      "description": "time() − last Unisphere performance timestamp. Yellow > 10 min, red > 20 min indicates stale collection.",
+      "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
       "datasource": {"type": "prometheus", "uid": "prometheus"},
       "targets": [{"expr": "time() - pmax_array_perf_timestamp_seconds{server=~\"$server\", array=~\"$array\"}", "legendFormat": "{{array}}", "instant": true}],
       "fieldConfig": {"defaults": {"unit": "s", "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 600}, {"color": "red", "value": 1200}]}}, "overrides": []},
@@ -63,134 +69,319 @@
     },
     {
       "id": 4, "type": "stat", "title": "Failing collectors",
-      "gridPos": {"h": 4, "w": 7, "x": 17, "y": 0},
+      "description": "Count of pmax_collector_up == 0. Any failing collector turns this red — check pmax_collector_up by collector to find which category 400s.",
+      "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0},
       "datasource": {"type": "prometheus", "uid": "prometheus"},
       "targets": [{"expr": "sum(1 - pmax_collector_up{server=~\"$server\"})", "instant": true}],
       "fieldConfig": {"defaults": {"thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "red", "value": 1}]}}, "overrides": []},
       "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "colorMode": "background"}
     },
+    {
+      "id": 5, "type": "stat", "title": "Total host IOPS",
+      "description": "Aggregate front-end host IOPS across the selected arrays.",
+      "gridPos": {"h": 4, "w": 6, "x": 0, "y": 4},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"expr": "sum(pmax_array_host_iops{server=~\"$server\", array=~\"$array\"})", "instant": true}],
+      "fieldConfig": {"defaults": {"unit": "iops", "decimals": 0, "thresholds": {"mode": "absolute", "steps": [{"color": "blue", "value": null}]}}, "overrides": []},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "colorMode": "value"}
+    },
+    {
+      "id": 6, "type": "stat", "title": "Total host bandwidth",
+      "description": "Aggregate front-end host bandwidth across the selected arrays.",
+      "gridPos": {"h": 4, "w": 6, "x": 6, "y": 4},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"expr": "sum(pmax_array_host_megabytes_per_second{server=~\"$server\", array=~\"$array\"})", "instant": true}],
+      "fieldConfig": {"defaults": {"unit": "MBs", "decimals": 1, "thresholds": {"mode": "absolute", "steps": [{"color": "blue", "value": null}]}}, "overrides": []},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "colorMode": "value"}
+    },
+    {
+      "id": 7, "type": "stat", "title": "Worst array RT",
+      "description": "Highest array response time (read or write) across the selection. Yellow > 1 ms, red > 2 ms.",
+      "gridPos": {"h": 4, "w": 6, "x": 12, "y": 4},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [
+        {"expr": "max(pmax_array_read_response_time_milliseconds{server=~\"$server\", array=~\"$array\"})", "instant": true, "refId": "A"},
+        {"expr": "max(pmax_array_write_response_time_milliseconds{server=~\"$server\", array=~\"$array\"})", "instant": true, "refId": "B"}
+      ],
+      "fieldConfig": {"defaults": {"unit": "ms", "decimals": 2, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 1}, {"color": "red", "value": 2}]}}, "overrides": []},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "colorMode": "background"}
+    },
+    {
+      "id": 8, "type": "stat", "title": "Highest SRP used %",
+      "description": "Fullest storage resource pool (usable used / usable total) across the selection. Yellow > 70%, red > 85%.",
+      "gridPos": {"h": 4, "w": 6, "x": 18, "y": 4},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"expr": "max(100 * pmax_srp_usable_used_terabytes{server=~\"$server\", array=~\"$array\"} / pmax_srp_usable_total_terabytes{server=~\"$server\", array=~\"$array\"})", "instant": true}],
+      "fieldConfig": {"defaults": {"unit": "percent", "decimals": 1, "min": 0, "max": 100, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 70}, {"color": "red", "value": 85}]}}, "overrides": []},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "colorMode": "background"}
+    },
 
     {
+      "id": 100, "type": "row", "title": "Array workload", "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 8}, "panels": []
+    },
+    {
       "id": 10, "type": "timeseries", "title": "Array host IOPS",
-      "gridPos": {"h": 8, "w": 8, "x": 0, "y": 4},
+      "description": "Front-end host IOPS served by each array — total, read and write.",
+      "gridPos": {"h": 8, "w": 6, "x": 0, "y": 9},
       "datasource": {"type": "prometheus", "uid": "prometheus"},
       "targets": [
         {"expr": "pmax_array_host_iops{server=~\"$server\", array=~\"$array\"}", "legendFormat": "{{array}} total"},
         {"expr": "pmax_array_host_read_iops{server=~\"$server\", array=~\"$array\"}", "legendFormat": "{{array}} read"},
         {"expr": "pmax_array_host_write_iops{server=~\"$server\", array=~\"$array\"}", "legendFormat": "{{array}} write"}
       ],
-      "fieldConfig": {"defaults": {"unit": "iops", "custom": {"fillOpacity": 8}}, "overrides": []},
-      "options": {"legend": {"displayMode": "table", "calcs": ["lastNotNull", "max"]}}
+      "fieldConfig": {"defaults": {"unit": "iops", "min": 0, "custom": {"fillOpacity": 8}}, "overrides": []},
+      "options": {"legend": {"displayMode": "table", "calcs": ["lastNotNull", "max"]}, "tooltip": {"mode": "multi", "sort": "desc"}}
     },
     {
       "id": 11, "type": "timeseries", "title": "Array host bandwidth",
-      "gridPos": {"h": 8, "w": 8, "x": 8, "y": 4},
+      "description": "Front-end host throughput per array (Unisphere-native MB/s) — total, read and write.",
+      "gridPos": {"h": 8, "w": 6, "x": 6, "y": 9},
       "datasource": {"type": "prometheus", "uid": "prometheus"},
       "targets": [
         {"expr": "pmax_array_host_megabytes_per_second{server=~\"$server\", array=~\"$array\"}", "legendFormat": "{{array}} total"},
         {"expr": "pmax_array_host_read_megabytes_per_second{server=~\"$server\", array=~\"$array\"}", "legendFormat": "{{array}} read"},
         {"expr": "pmax_array_host_write_megabytes_per_second{server=~\"$server\", array=~\"$array\"}", "legendFormat": "{{array}} write"}
       ],
-      "fieldConfig": {"defaults": {"unit": "MBs", "custom": {"fillOpacity": 8}}, "overrides": []},
-      "options": {"legend": {"displayMode": "table", "calcs": ["lastNotNull", "max"]}}
+      "fieldConfig": {"defaults": {"unit": "MBs", "min": 0, "custom": {"fillOpacity": 8}}, "overrides": []},
+      "options": {"legend": {"displayMode": "table", "calcs": ["lastNotNull", "max"]}, "tooltip": {"mode": "multi", "sort": "desc"}}
     },
     {
-      "id": 12, "type": "timeseries", "title": "Array response time",
-      "gridPos": {"h": 8, "w": 8, "x": 16, "y": 4},
+      "id": 12, "type": "timeseries", "title": "Read / write mix",
+      "description": "Read vs write split of the array workload (pmax_array_read_percent / write_percent).",
+      "gridPos": {"h": 8, "w": 6, "x": 12, "y": 9},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [
+        {"expr": "pmax_array_read_percent{server=~\"$server\", array=~\"$array\"}", "legendFormat": "{{array}} read"},
+        {"expr": "pmax_array_write_percent{server=~\"$server\", array=~\"$array\"}", "legendFormat": "{{array}} write"}
+      ],
+      "fieldConfig": {"defaults": {"unit": "percent", "min": 0, "max": 100, "custom": {"fillOpacity": 20, "stacking": {"mode": "normal", "group": "A"}}}, "overrides": []},
+      "options": {"legend": {"displayMode": "table", "calcs": ["lastNotNull"]}, "tooltip": {"mode": "multi", "sort": "desc"}}
+    },
+    {
+      "id": 13, "type": "timeseries", "title": "Backend IOPS",
+      "description": "Backend (drive-side) IOPS per array — work reaching disks after cache.",
+      "gridPos": {"h": 8, "w": 6, "x": 18, "y": 9},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"expr": "pmax_array_backend_iops{server=~\"$server\", array=~\"$array\"}", "legendFormat": "{{array}}"}],
+      "fieldConfig": {"defaults": {"unit": "iops", "min": 0, "custom": {"fillOpacity": 8}}, "overrides": []},
+      "options": {"legend": {"displayMode": "table", "calcs": ["lastNotNull", "max"]}, "tooltip": {"mode": "multi", "sort": "desc"}}
+    },
+
+    {
+      "id": 101, "type": "row", "title": "Latency & cache", "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 17}, "panels": []
+    },
+    {
+      "id": 20, "type": "timeseries", "title": "Array response time",
+      "description": "Array read/write response time (ms). Yellow > 1 ms, red > 2 ms.",
+      "gridPos": {"h": 8, "w": 8, "x": 0, "y": 18},
       "datasource": {"type": "prometheus", "uid": "prometheus"},
       "targets": [
         {"expr": "pmax_array_read_response_time_milliseconds{server=~\"$server\", array=~\"$array\"}", "legendFormat": "{{array}} read"},
         {"expr": "pmax_array_write_response_time_milliseconds{server=~\"$server\", array=~\"$array\"}", "legendFormat": "{{array}} write"}
       ],
-      "fieldConfig": {"defaults": {"unit": "ms", "custom": {"fillOpacity": 8}}, "overrides": []},
-      "options": {"legend": {"displayMode": "table", "calcs": ["lastNotNull", "max"]}}
+      "fieldConfig": {"defaults": {"unit": "ms", "min": 0, "custom": {"fillOpacity": 8, "thresholdsStyle": {"mode": "line"}}, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 1}, {"color": "red", "value": 2}]}, "color": {"mode": "thresholds"}}, "overrides": []},
+      "options": {"legend": {"displayMode": "table", "calcs": ["lastNotNull", "max"]}, "tooltip": {"mode": "multi", "sort": "desc"}}
     },
-
     {
-      "id": 20, "type": "timeseries", "title": "Cache: write-pending & hit",
-      "gridPos": {"h": 8, "w": 8, "x": 0, "y": 12},
+      "id": 21, "type": "timeseries", "title": "Cache: write-pending & hit",
+      "description": "Write-pending and read-hit percentages. Sustained high WP% signals destage pressure.",
+      "gridPos": {"h": 8, "w": 8, "x": 8, "y": 18},
       "datasource": {"type": "prometheus", "uid": "prometheus"},
       "targets": [
         {"expr": "pmax_array_cache_write_pending_percent{server=~\"$server\", array=~\"$array\"}", "legendFormat": "{{array}} WP %"},
         {"expr": "pmax_array_cache_hit_percent{server=~\"$server\", array=~\"$array\"}", "legendFormat": "{{array}} hit %"}
       ],
-      "fieldConfig": {"defaults": {"unit": "percent", "max": 100, "custom": {"fillOpacity": 8}}, "overrides": []},
-      "options": {"legend": {"displayMode": "table", "calcs": ["lastNotNull", "max"]}}
+      "fieldConfig": {"defaults": {"unit": "percent", "min": 0, "max": 100, "custom": {"fillOpacity": 8}}, "overrides": []},
+      "options": {"legend": {"displayMode": "table", "calcs": ["lastNotNull", "max"]}, "tooltip": {"mode": "multi", "sort": "desc"}}
     },
     {
-      "id": 21, "type": "timeseries", "title": "FE director busy %",
-      "gridPos": {"h": 8, "w": 8, "x": 8, "y": 12},
+      "id": 22, "type": "timeseries", "title": "Cache-partition WP utilization",
+      "description": "Per-partition write-pending utilization (%). Approaching 100% means a partition's WP limit is saturating.",
+      "gridPos": {"h": 8, "w": 8, "x": 16, "y": 18},
       "datasource": {"type": "prometheus", "uid": "prometheus"},
-      "targets": [{"expr": "pmax_fe_director_busy_percent{server=~\"$server\", array=~\"$array\"}", "legendFormat": "{{array}} {{director}}"}],
-      "fieldConfig": {"defaults": {"unit": "percent", "max": 100, "custom": {"fillOpacity": 8}}, "overrides": []},
-      "options": {"legend": {"displayMode": "table", "calcs": ["lastNotNull", "max"]}}
-    },
-    {
-      "id": 22, "type": "timeseries", "title": "FE port busy % (top 10)",
-      "gridPos": {"h": 8, "w": 8, "x": 16, "y": 12},
-      "datasource": {"type": "prometheus", "uid": "prometheus"},
-      "targets": [{"expr": "topk(10, pmax_fe_port_busy_percent{server=~\"$server\", array=~\"$array\"})", "legendFormat": "{{array}} {{director}}:{{port}}"}],
-      "fieldConfig": {"defaults": {"unit": "percent", "max": 100, "custom": {"fillOpacity": 8}}, "overrides": []},
-      "options": {"legend": {"displayMode": "table", "calcs": ["lastNotNull", "max"]}}
+      "targets": [{"expr": "pmax_cache_partition_wp_utilization_percent{server=~\"$server\", array=~\"$array\"}", "legendFormat": "{{array}} {{cache_partition}}"}],
+      "fieldConfig": {"defaults": {"unit": "percent", "min": 0, "max": 100, "custom": {"fillOpacity": 8, "thresholdsStyle": {"mode": "line"}}, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 70}, {"color": "red", "value": 90}]}, "color": {"mode": "thresholds"}}, "overrides": []},
+      "options": {"legend": {"displayMode": "table", "calcs": ["lastNotNull", "max"]}, "tooltip": {"mode": "multi", "sort": "desc"}}
     },
 
     {
-      "id": 30, "type": "timeseries", "title": "BE / RDF director busy %",
-      "gridPos": {"h": 8, "w": 8, "x": 0, "y": 20},
-      "datasource": {"type": "prometheus", "uid": "prometheus"},
-      "targets": [
-        {"expr": "pmax_be_director_busy_percent{server=~\"$server\", array=~\"$array\"}", "legendFormat": "{{array}} {{director}} (BE)"},
-        {"expr": "pmax_rdf_director_busy_percent{server=~\"$server\", array=~\"$array\"}", "legendFormat": "{{array}} {{director}} (RDF)"}
-      ],
-      "fieldConfig": {"defaults": {"unit": "percent", "max": 100, "custom": {"fillOpacity": 8}}, "overrides": []},
-      "options": {"legend": {"displayMode": "table", "calcs": ["lastNotNull", "max"]}}
-    },
-    {
-      "id": 31, "type": "timeseries", "title": "Storage group IOPS (top 10)",
-      "gridPos": {"h": 8, "w": 8, "x": 8, "y": 20},
-      "datasource": {"type": "prometheus", "uid": "prometheus"},
-      "targets": [{"expr": "topk(10, pmax_storage_group_host_iops{server=~\"$server\", array=~\"$array\"})", "legendFormat": "{{array}} {{storage_group}}"}],
-      "fieldConfig": {"defaults": {"unit": "iops", "custom": {"fillOpacity": 8}}, "overrides": []},
-      "options": {"legend": {"displayMode": "table", "calcs": ["lastNotNull", "max"]}}
-    },
-    {
-      "id": 32, "type": "timeseries", "title": "Storage group response time (top 10)",
-      "gridPos": {"h": 8, "w": 8, "x": 16, "y": 20},
-      "datasource": {"type": "prometheus", "uid": "prometheus"},
-      "targets": [
-        {"expr": "topk(10, pmax_storage_group_read_response_time_milliseconds{server=~\"$server\", array=~\"$array\"})", "legendFormat": "{{array}} {{storage_group}} read"},
-        {"expr": "topk(10, pmax_storage_group_write_response_time_milliseconds{server=~\"$server\", array=~\"$array\"})", "legendFormat": "{{array}} {{storage_group}} write"}
-      ],
-      "fieldConfig": {"defaults": {"unit": "ms", "custom": {"fillOpacity": 8}}, "overrides": []},
-      "options": {"legend": {"displayMode": "table", "calcs": ["lastNotNull", "max"]}}
+      "id": 102, "type": "row", "title": "Front-end path", "collapsed": true,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 26},
+      "panels": [
+        {
+          "id": 30, "type": "timeseries", "title": "FE director busy %",
+          "description": "Front-end director utilization. Yellow > 70%, red > 90%.",
+          "gridPos": {"h": 8, "w": 6, "x": 0, "y": 27},
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "targets": [{"expr": "pmax_fe_director_busy_percent{server=~\"$server\", array=~\"$array\"}", "legendFormat": "{{array}} {{director}}"}],
+          "fieldConfig": {"defaults": {"unit": "percent", "min": 0, "max": 100, "custom": {"fillOpacity": 8, "thresholdsStyle": {"mode": "line"}}, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 70}, {"color": "red", "value": 90}]}, "color": {"mode": "thresholds"}}, "overrides": []},
+          "options": {"legend": {"displayMode": "table", "calcs": ["lastNotNull", "max"]}, "tooltip": {"mode": "multi", "sort": "desc"}}
+        },
+        {
+          "id": 31, "type": "timeseries", "title": "FE director response time",
+          "description": "Front-end director read/write service time (ms).",
+          "gridPos": {"h": 8, "w": 6, "x": 6, "y": 27},
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "targets": [
+            {"expr": "pmax_fe_director_read_response_time_milliseconds{server=~\"$server\", array=~\"$array\"}", "legendFormat": "{{array}} {{director}} read"},
+            {"expr": "pmax_fe_director_write_response_time_milliseconds{server=~\"$server\", array=~\"$array\"}", "legendFormat": "{{array}} {{director}} write"}
+          ],
+          "fieldConfig": {"defaults": {"unit": "ms", "min": 0, "custom": {"fillOpacity": 8, "thresholdsStyle": {"mode": "line"}}, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 1}, {"color": "red", "value": 2}]}, "color": {"mode": "thresholds"}}, "overrides": []},
+          "options": {"legend": {"displayMode": "table", "calcs": ["lastNotNull", "max"]}, "tooltip": {"mode": "multi", "sort": "desc"}}
+        },
+        {
+          "id": 32, "type": "timeseries", "title": "FE director queue-depth utilization",
+          "description": "Front-end director queue-depth utilization (%) — a saturation signal even when busy% looks moderate.",
+          "gridPos": {"h": 8, "w": 6, "x": 12, "y": 27},
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "targets": [{"expr": "pmax_fe_director_queue_depth_utilization_percent{server=~\"$server\", array=~\"$array\"}", "legendFormat": "{{array}} {{director}}"}],
+          "fieldConfig": {"defaults": {"unit": "percent", "min": 0, "max": 100, "custom": {"fillOpacity": 8, "thresholdsStyle": {"mode": "line"}}, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 70}, {"color": "red", "value": 90}]}, "color": {"mode": "thresholds"}}, "overrides": []},
+          "options": {"legend": {"displayMode": "table", "calcs": ["lastNotNull", "max"]}, "tooltip": {"mode": "multi", "sort": "desc"}}
+        },
+        {
+          "id": 33, "type": "timeseries", "title": "FE port busy % (top 10)",
+          "description": "Ten busiest front-end ports. Yellow > 70%, red > 90%.",
+          "gridPos": {"h": 8, "w": 6, "x": 18, "y": 27},
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "targets": [{"expr": "topk(10, pmax_fe_port_busy_percent{server=~\"$server\", array=~\"$array\"})", "legendFormat": "{{array}} {{director}}:{{port}}"}],
+          "fieldConfig": {"defaults": {"unit": "percent", "min": 0, "max": 100, "custom": {"fillOpacity": 8, "thresholdsStyle": {"mode": "line"}}, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 70}, {"color": "red", "value": 90}]}, "color": {"mode": "thresholds"}}, "overrides": []},
+          "options": {"legend": {"displayMode": "table", "calcs": ["lastNotNull", "max"]}, "tooltip": {"mode": "multi", "sort": "desc"}}
+        }
+      ]
     },
 
     {
-      "id": 40, "type": "bargauge", "title": "SRP usable capacity used",
-      "gridPos": {"h": 8, "w": 8, "x": 0, "y": 28},
-      "datasource": {"type": "prometheus", "uid": "prometheus"},
-      "targets": [{"expr": "100 * pmax_srp_usable_used_terabytes{server=~\"$server\", array=~\"$array\"} / pmax_srp_usable_total_terabytes{server=~\"$server\", array=~\"$array\"}", "legendFormat": "{{array}} {{srp}}", "instant": true}],
-      "fieldConfig": {"defaults": {"unit": "percent", "min": 0, "max": 100, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 70}, {"color": "red", "value": 85}]}}, "overrides": []},
-      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "displayMode": "gradient", "orientation": "horizontal"}
+      "id": 103, "type": "row", "title": "Back-end & replication", "collapsed": true,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 27},
+      "panels": [
+        {
+          "id": 40, "type": "timeseries", "title": "BE director busy %",
+          "description": "Back-end (drive-side) director utilization. Yellow > 70%, red > 90%.",
+          "gridPos": {"h": 8, "w": 6, "x": 0, "y": 28},
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "targets": [{"expr": "pmax_be_director_busy_percent{server=~\"$server\", array=~\"$array\"}", "legendFormat": "{{array}} {{director}}"}],
+          "fieldConfig": {"defaults": {"unit": "percent", "min": 0, "max": 100, "custom": {"fillOpacity": 8, "thresholdsStyle": {"mode": "line"}}, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 70}, {"color": "red", "value": 90}]}, "color": {"mode": "thresholds"}}, "overrides": []},
+          "options": {"legend": {"displayMode": "table", "calcs": ["lastNotNull", "max"]}, "tooltip": {"mode": "multi", "sort": "desc"}}
+        },
+        {
+          "id": 41, "type": "timeseries", "title": "BE director throughput",
+          "description": "Back-end director read/write throughput (MB/s).",
+          "gridPos": {"h": 8, "w": 6, "x": 6, "y": 28},
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "targets": [
+            {"expr": "pmax_be_director_read_megabytes_per_second{server=~\"$server\", array=~\"$array\"}", "legendFormat": "{{array}} {{director}} read"},
+            {"expr": "pmax_be_director_write_megabytes_per_second{server=~\"$server\", array=~\"$array\"}", "legendFormat": "{{array}} {{director}} write"}
+          ],
+          "fieldConfig": {"defaults": {"unit": "MBs", "min": 0, "custom": {"fillOpacity": 8}}, "overrides": []},
+          "options": {"legend": {"displayMode": "table", "calcs": ["lastNotNull", "max"]}, "tooltip": {"mode": "multi", "sort": "desc"}}
+        },
+        {
+          "id": 42, "type": "timeseries", "title": "RDF director busy %",
+          "description": "SRDF replication director utilization. Yellow > 70%, red > 90%.",
+          "gridPos": {"h": 8, "w": 6, "x": 12, "y": 28},
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "targets": [{"expr": "pmax_rdf_director_busy_percent{server=~\"$server\", array=~\"$array\"}", "legendFormat": "{{array}} {{director}}"}],
+          "fieldConfig": {"defaults": {"unit": "percent", "min": 0, "max": 100, "custom": {"fillOpacity": 8, "thresholdsStyle": {"mode": "line"}}, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 70}, {"color": "red", "value": 90}]}, "color": {"mode": "thresholds"}}, "overrides": []},
+          "options": {"legend": {"displayMode": "table", "calcs": ["lastNotNull", "max"]}, "tooltip": {"mode": "multi", "sort": "desc"}}
+        },
+        {
+          "id": 43, "type": "timeseries", "title": "RDF throughput",
+          "description": "SRDF replication director throughput (MB/s, sent + received).",
+          "gridPos": {"h": 8, "w": 6, "x": 18, "y": 28},
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "targets": [{"expr": "pmax_rdf_director_megabytes_per_second{server=~\"$server\", array=~\"$array\"}", "legendFormat": "{{array}} {{director}}"}],
+          "fieldConfig": {"defaults": {"unit": "MBs", "min": 0, "custom": {"fillOpacity": 8}}, "overrides": []},
+          "options": {"legend": {"displayMode": "table", "calcs": ["lastNotNull", "max"]}, "tooltip": {"mode": "multi", "sort": "desc"}}
+        }
+      ]
     },
+
     {
-      "id": 41, "type": "stat", "title": "SRP efficiency (x:1)",
-      "gridPos": {"h": 8, "w": 4, "x": 8, "y": 28},
-      "datasource": {"type": "prometheus", "uid": "prometheus"},
-      "targets": [{"expr": "pmax_srp_overall_efficiency_ratio{server=~\"$server\", array=~\"$array\"}", "legendFormat": "{{array}} {{srp}}", "instant": true}],
-      "fieldConfig": {"defaults": {"decimals": 1, "thresholds": {"mode": "absolute", "steps": [{"color": "blue", "value": null}]}}, "overrides": []},
-      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "colorMode": "value", "textMode": "value_and_name"}
+      "id": 104, "type": "row", "title": "Storage groups", "collapsed": true,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 28},
+      "panels": [
+        {
+          "id": 50, "type": "timeseries", "title": "Storage group IOPS (top 10)",
+          "description": "Ten busiest storage groups by host IOPS. Click a series to drill into the LUN deep-dive for that SG.",
+          "gridPos": {"h": 8, "w": 8, "x": 0, "y": 29},
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "targets": [{"expr": "topk(10, pmax_storage_group_host_iops{server=~\"$server\", array=~\"$array\"})", "legendFormat": "{{array}} {{storage_group}}"}],
+          "fieldConfig": {"defaults": {"unit": "iops", "min": 0, "custom": {"fillOpacity": 8}, "links": [{"title": "LUN deep dive: ${__field.labels.storage_group}", "url": "/d/pmax-lun-deep-dive/powermax-lun-deep-dive?var-server=${__field.labels.server}&var-array=${__field.labels.array}&var-storage_group=${__field.labels.storage_group}"}]}, "overrides": []},
+          "options": {"legend": {"displayMode": "table", "calcs": ["lastNotNull", "max"]}, "tooltip": {"mode": "multi", "sort": "desc"}}
+        },
+        {
+          "id": 51, "type": "timeseries", "title": "Storage group response time (top 10)",
+          "description": "Ten slowest storage groups by read/write response time (ms). Yellow > 1 ms, red > 2 ms.",
+          "gridPos": {"h": 8, "w": 8, "x": 8, "y": 29},
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "targets": [
+            {"expr": "topk(10, pmax_storage_group_read_response_time_milliseconds{server=~\"$server\", array=~\"$array\"})", "legendFormat": "{{array}} {{storage_group}} read"},
+            {"expr": "topk(10, pmax_storage_group_write_response_time_milliseconds{server=~\"$server\", array=~\"$array\"})", "legendFormat": "{{array}} {{storage_group}} write"}
+          ],
+          "fieldConfig": {"defaults": {"unit": "ms", "min": 0, "custom": {"fillOpacity": 8, "thresholdsStyle": {"mode": "line"}}, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 1}, {"color": "red", "value": 2}]}, "color": {"mode": "thresholds"}, "links": [{"title": "LUN deep dive: ${__field.labels.storage_group}", "url": "/d/pmax-lun-deep-dive/powermax-lun-deep-dive?var-server=${__field.labels.server}&var-array=${__field.labels.array}&var-storage_group=${__field.labels.storage_group}"}]}, "overrides": []},
+          "options": {"legend": {"displayMode": "table", "calcs": ["lastNotNull", "max"]}, "tooltip": {"mode": "multi", "sort": "desc"}}
+        },
+        {
+          "id": 52, "type": "timeseries", "title": "Storage group bandwidth (top 10)",
+          "description": "Ten busiest storage groups by host bandwidth (MB/s). Click a series to drill into the LUN deep-dive for that SG.",
+          "gridPos": {"h": 8, "w": 8, "x": 16, "y": 29},
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "targets": [{"expr": "topk(10, pmax_storage_group_host_megabytes_per_second{server=~\"$server\", array=~\"$array\"})", "legendFormat": "{{array}} {{storage_group}}"}],
+          "fieldConfig": {"defaults": {"unit": "MBs", "min": 0, "custom": {"fillOpacity": 8}, "links": [{"title": "LUN deep dive: ${__field.labels.storage_group}", "url": "/d/pmax-lun-deep-dive/powermax-lun-deep-dive?var-server=${__field.labels.server}&var-array=${__field.labels.array}&var-storage_group=${__field.labels.storage_group}"}]}, "overrides": []},
+          "options": {"legend": {"displayMode": "table", "calcs": ["lastNotNull", "max"]}, "tooltip": {"mode": "multi", "sort": "desc"}}
+        }
+      ]
     },
+
     {
-      "id": 42, "type": "timeseries", "title": "SRP load",
-      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 28},
-      "datasource": {"type": "prometheus", "uid": "prometheus"},
-      "targets": [
-        {"expr": "pmax_srp_host_iops{server=~\"$server\", array=~\"$array\"}", "legendFormat": "{{array}} {{srp}} IOPS"},
-        {"expr": "pmax_srp_response_time_milliseconds{server=~\"$server\", array=~\"$array\"}", "legendFormat": "{{array}} {{srp}} resp ms"}
-      ],
-      "fieldConfig": {"defaults": {"custom": {"fillOpacity": 8}}, "overrides": [{"matcher": {"id": "byRegexp", "options": ".*resp ms.*"}, "properties": [{"id": "unit", "value": "ms"}, {"id": "custom.axisPlacement", "value": "right"}]}]},
-      "options": {"legend": {"displayMode": "table", "calcs": ["lastNotNull", "max"]}}
+      "id": 105, "type": "row", "title": "Capacity & efficiency", "collapsed": true,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 29},
+      "panels": [
+        {
+          "id": 60, "type": "bargauge", "title": "SRP usable capacity used",
+          "description": "Usable used / usable total per SRP. Yellow > 70%, red > 85%.",
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 30},
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "targets": [{"expr": "100 * pmax_srp_usable_used_terabytes{server=~\"$server\", array=~\"$array\"} / pmax_srp_usable_total_terabytes{server=~\"$server\", array=~\"$array\"}", "legendFormat": "{{array}} {{srp}}", "instant": true}],
+          "fieldConfig": {"defaults": {"unit": "percent", "min": 0, "max": 100, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 70}, {"color": "red", "value": 85}]}}, "overrides": []},
+          "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "displayMode": "gradient", "orientation": "horizontal"}
+        },
+        {
+          "id": 61, "type": "timeseries", "title": "SRP subscription (oversubscription)",
+          "description": "Subscribed vs usable capacity (TB). Subscribed above usable is thin oversubscription — fine until effective used catches up.",
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 30},
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "targets": [
+            {"expr": "pmax_srp_subscribed_used_terabytes{server=~\"$server\", array=~\"$array\"}", "legendFormat": "{{array}} {{srp}} subscribed"},
+            {"expr": "pmax_srp_usable_total_terabytes{server=~\"$server\", array=~\"$array\"}", "legendFormat": "{{array}} {{srp}} usable total"}
+          ],
+          "fieldConfig": {"defaults": {"unit": "tbytes", "min": 0, "custom": {"fillOpacity": 8}}, "overrides": []},
+          "options": {"legend": {"displayMode": "table", "calcs": ["lastNotNull", "max"]}, "tooltip": {"mode": "multi", "sort": "desc"}}
+        },
+        {
+          "id": 62, "type": "stat", "title": "SRP efficiency (x:1)",
+          "description": "Overall data-reduction efficiency ratio per SRP (dedup + compression + thin).",
+          "gridPos": {"h": 8, "w": 6, "x": 0, "y": 38},
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "targets": [{"expr": "pmax_srp_overall_efficiency_ratio{server=~\"$server\", array=~\"$array\"}", "legendFormat": "{{array}} {{srp}}", "instant": true}],
+          "fieldConfig": {"defaults": {"decimals": 1, "thresholds": {"mode": "absolute", "steps": [{"color": "blue", "value": null}]}}, "overrides": []},
+          "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "colorMode": "value", "textMode": "value_and_name"}
+        },
+        {
+          "id": 63, "type": "timeseries", "title": "SRP load",
+          "description": "Per-SRP host IOPS (left axis) and response time (right axis, ms).",
+          "gridPos": {"h": 8, "w": 18, "x": 6, "y": 38},
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "targets": [
+            {"expr": "pmax_srp_host_iops{server=~\"$server\", array=~\"$array\"}", "legendFormat": "{{array}} {{srp}} IOPS"},
+            {"expr": "pmax_srp_response_time_milliseconds{server=~\"$server\", array=~\"$array\"}", "legendFormat": "{{array}} {{srp}} resp ms"}
+          ],
+          "fieldConfig": {"defaults": {"min": 0, "custom": {"fillOpacity": 8}}, "overrides": [{"matcher": {"id": "byRegexp", "options": ".*resp ms.*"}, "properties": [{"id": "unit", "value": "ms"}, {"id": "custom.axisPlacement", "value": "right"}]}, {"matcher": {"id": "byRegexp", "options": ".*IOPS.*"}, "properties": [{"id": "unit", "value": "iops"}]}]},
+          "options": {"legend": {"displayMode": "table", "calcs": ["lastNotNull", "max"]}, "tooltip": {"mode": "multi", "sort": "desc"}}
+        }
+      ]
     }
   ]
 }
