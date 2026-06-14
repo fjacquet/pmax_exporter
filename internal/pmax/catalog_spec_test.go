@@ -5,8 +5,9 @@ import (
 	"testing"
 )
 
-// reportMode keeps the checks logging-only until the catalog/dashboards are
-// reconciled (Phase 2). Flip to false in Phase 3 to make this a CI gate.
+// reportMode=false makes these checks hard CI gates (Errorf). Set to true
+// temporarily to report-only — e.g. while triaging before adding a
+// specExceptions entry.
 const reportMode = false
 
 // specExceptions are catalog keys intentionally kept despite absence from the
@@ -68,6 +69,22 @@ func TestInventoryFieldsInSpec(t *testing.T) {
 	for _, f := range fields {
 		if !props[f] {
 			reportf(t, "volume detail field %q not in 10.4 volume schema", f)
+		}
+	}
+}
+
+func TestVolumePerfKeysInSpec(t *testing.T) {
+	spec := specMetrics(t, spec104Path)
+	set, ok := spec["Volume"]
+	if !ok {
+		t.Fatal("no /performance/Volume/metrics enum in 10.4 spec")
+	}
+	for _, m := range volumeMetricDefs {
+		if specExceptions["Volume/"+m.Key] != "" {
+			continue
+		}
+		if !set[m.Key] {
+			reportf(t, "volume perf key %q (-> %s) not in 10.4 spec enum", m.Key, m.Name)
 		}
 	}
 }
