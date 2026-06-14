@@ -14,3 +14,6 @@ Status / Context / Decision / Consequences.
 | [0007](0007-metric-naming-and-units.md) | Metric naming & units |
 | [0008](0008-serve-http-before-first-collect.md) | Serve HTTP before first collect |
 | [0009](0009-provisional-api-mappings.md) | Provisional API mappings & live validation |
+| [0010](0010-spec-validation-ci-gate.md) | Catalog & dashboard validation against vendored OpenAPI spec |
+| [0011](0011-windows-binary-for-trace-capture.md) | Windows binary for trace capture |
+| [0012](0012-opt-in-volume-collectors.md) | Opt-in volume (LUN) collectors & cost model |

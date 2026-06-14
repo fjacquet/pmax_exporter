@@ -28,3 +28,6 @@ nav:
       - 0007 Naming & units: adr/0007-metric-naming-and-units.md
       - 0008 Serve before collect: adr/0008-serve-http-before-first-collect.md
       - 0009 Provisional API mappings: adr/0009-provisional-api-mappings.md
+      - 0010 Spec validation CI gate: adr/0010-spec-validation-ci-gate.md
+      - 0011 Windows trace binary: adr/0011-windows-binary-for-trace-capture.md
+      - 0012 Opt-in volume collectors: adr/0012-opt-in-volume-collectors.md
