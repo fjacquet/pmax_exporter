@@ -7,7 +7,14 @@ import (
 
 // reportMode keeps the checks logging-only until the catalog/dashboards are
 // reconciled (Phase 2). Flip to false in Phase 3 to make this a CI gate.
-const reportMode = true
+const reportMode = false
+
+// specExceptions are catalog keys intentionally kept despite absence from the
+// 10.4 spec enum, because the live array accepts them and the spec is incomplete
+// (ADR-0009). Key: "Category/MetricKey". Value: justification (required, non-empty).
+var specExceptions = map[string]string{
+	// none currently — the catalog is fully spec-consistent as of 2026-06-14.
+}
 
 func reportf(t *testing.T, format string, a ...any) {
 	t.Helper()
@@ -28,6 +35,9 @@ func TestCatalogPerfKeysInSpec(t *testing.T) {
 			continue
 		}
 		for _, m := range cat.Metrics {
+			if specExceptions[cat.Category+"/"+m.Key] != "" {
+				continue
+			}
 			if !set[m.Key] {
 				reportf(t, "category %q: key %q (-> %s) not in 10.4 spec enum",
 					cat.Category, m.Key, m.Name)
