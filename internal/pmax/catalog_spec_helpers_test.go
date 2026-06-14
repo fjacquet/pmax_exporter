@@ -2,9 +2,13 @@ package pmax
 
 import (
 	"encoding/json"
+	"go/ast"
+	"go/parser"
+	"go/token"
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"testing"
 )
 
@@ -126,10 +130,11 @@ func metricsEnumDesc(schema json.RawMessage) string {
 
 var pmaxNameRe = regexp.MustCompile(`pmax_[a-z0-9_]+`)
 
-// emittedNames is every pmax_* metric the exporter can emit: the set of pmax_
-// string literals in non-test Go source under internal/pmax. A name only reaches
-// a dashboard if some collector emits a Sample with that literal, so this is the
-// authoritative, drift-proof emitted set (no hand-maintained list).
+// emittedNames is every pmax_* metric the exporter can emit: names are extracted
+// from Go string literals in non-test source files under internal/pmax using the
+// go/parser + go/ast, so comments and identifiers are ignored. A name only
+// reaches a dashboard if some collector emits a Sample with that literal, making
+// this the authoritative, drift-proof emitted set (no hand-maintained list).
 func emittedNames(t *testing.T) map[string]bool {
 	t.Helper()
 	set := map[string]bool{}
@@ -137,17 +142,29 @@ func emittedNames(t *testing.T) map[string]bool {
 	if err != nil {
 		t.Fatalf("glob: %v", err)
 	}
+	fset := token.NewFileSet()
 	for _, f := range matches {
 		if len(f) > 8 && f[len(f)-8:] == "_test.go" {
 			continue
 		}
-		b, err := os.ReadFile(f)
+		astFile, err := parser.ParseFile(fset, f, nil, 0)
 		if err != nil {
-			t.Fatalf("read %s: %v", f, err)
+			t.Fatalf("parse %s: %v", f, err)
 		}
-		for _, n := range pmaxNameRe.FindAllString(string(b), -1) {
-			set[n] = true
-		}
+		ast.Inspect(astFile, func(n ast.Node) bool {
+			lit, ok := n.(*ast.BasicLit)
+			if !ok || lit.Kind != token.STRING {
+				return true
+			}
+			unquoted, err := strconv.Unquote(lit.Value)
+			if err != nil {
+				return true // skip non-standard literals
+			}
+			for _, name := range pmaxNameRe.FindAllString(unquoted, -1) {
+				set[name] = true
+			}
+			return true
+		})
 	}
 	return set
 }
