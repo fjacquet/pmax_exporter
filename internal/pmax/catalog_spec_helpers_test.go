@@ -176,6 +176,57 @@ func dashboardRefs(t *testing.T) map[string][]string {
 	return out
 }
 
+// specResponseProps returns the property names of the 200 response schema for the
+// first path whose key ends with pathSuffix (paths are version-prefixed, e.g.
+// /104/sloprovisioning/.../volume/{volumeId}).
+func specResponseProps(t *testing.T, path, pathSuffix string) map[string]bool {
+	t.Helper()
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read spec: %v", err)
+	}
+	var doc struct {
+		Paths map[string]struct {
+			Get struct {
+				Responses struct {
+					OK struct {
+						Content struct {
+							JSON struct {
+								Schema struct {
+									Ref string `json:"$ref"`
+								} `json:"schema"`
+							} `json:"application/json"`
+						} `json:"content"`
+					} `json:"200"`
+				} `json:"responses"`
+			} `json:"get"`
+		} `json:"paths"`
+		Components struct {
+			Schemas map[string]struct {
+				Properties map[string]json.RawMessage `json:"properties"`
+			} `json:"schemas"`
+		} `json:"components"`
+	}
+	if err := json.Unmarshal(raw, &doc); err != nil {
+		t.Fatalf("parse spec: %v", err)
+	}
+	for p, item := range doc.Paths {
+		if len(p) >= len(pathSuffix) && p[len(p)-len(pathSuffix):] == pathSuffix {
+			name := item.Get.Responses.OK.Content.JSON.Schema.Ref
+			if i := lastSlash(name); i >= 0 {
+				name = name[i+1:]
+			}
+			props := map[string]bool{}
+			for k := range doc.Components.Schemas[name].Properties {
+				props[k] = true
+			}
+			return props
+		}
+	}
+	t.Fatalf("no path ending %q in %s", pathSuffix, path)
+	return nil
+}
+
 func TestSpecMetricsLoads(t *testing.T) {
 	got := specMetrics(t, spec104Path)
 	want := map[string]int{

@@ -47,3 +47,17 @@ func TestDashboardRefsEmitted(t *testing.T) {
 		}
 	}
 }
+
+func TestInventoryFieldsInSpec(t *testing.T) {
+	props := specResponseProps(t, spec104Path, "/volume/{volumeId}")
+	// JSON tags decoded by volumeDetailResp in volume_inventory.go.
+	fields := []string{
+		"volumeId", "cap_gb", "allocated_percent",
+		"wwn", "volume_identifier", "type", "storageGroupId",
+	}
+	for _, f := range fields {
+		if !props[f] {
+			reportf(t, "volume detail field %q not in 10.4 volume schema", f)
+		}
+	}
+}
