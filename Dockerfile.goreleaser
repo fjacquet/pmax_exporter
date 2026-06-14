@@ -2,6 +2,6 @@
 FROM gcr.io/distroless/static:nonroot
 COPY pmax_exporter /pmax_exporter
 USER nonroot:nonroot
-EXPOSE 9104
+EXPOSE 9443
 ENTRYPOINT ["/pmax_exporter"]
 CMD ["--config", "/etc/pmax_exporter/config.yaml"]

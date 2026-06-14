@@ -14,7 +14,7 @@ open http://localhost:9090 # Prometheus — query: pmax_up
 make cli
 cp .env.example .env       # or export the PMAX1_* variables
 ./bin/pmax_exporter --config config.yaml --debug
-curl -s localhost:9104/metrics | grep pmax_up
+curl -s localhost:9443/metrics | grep pmax_up
 ```
 
 ## Validate against your array
@@ -34,7 +34,7 @@ The first run against a real Unisphere should validate the provisional metric ca
 ## Health
 
 ```bash
-curl -s localhost:9104/health | jq
+curl -s localhost:9443/health | jq
 ```
 
 Returns 503 until every configured instance has a healthy collection cycle.

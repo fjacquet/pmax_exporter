@@ -33,8 +33,8 @@ API. One process monitors any number of Unisphere instances and arrays.
 
 ```bash
 cp .env.example .env        # set PMAX1_HOSTNAME / PMAX1_USERNAME / PMAX1_PASSWORD
-docker compose up -d        # exporter (:9104) + Prometheus (:9090) + Grafana (:3000)
-curl -s localhost:9104/metrics | grep pmax_up
+docker compose up -d        # exporter (:9443) + Prometheus (:9090) + Grafana (:3000)
+curl -s localhost:9443/metrics | grep pmax_up
 ```
 
 Or bare metal:

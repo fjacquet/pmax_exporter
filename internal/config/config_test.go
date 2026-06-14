@@ -11,7 +11,7 @@ func TestLoadInterpolatesEnvAndDefaults(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "config.yaml")
 	yaml := `
-server: {host: "0.0.0.0", port: "9104", uri: "/metrics"}
+server: {host: "0.0.0.0", port: "9443", uri: "/metrics"}
 collection: {interval: "5m", timeout: "120s"}
 servers:
   - {name: uni01, host: uni01.example.com, username: u, password: "${PMAX01_PASSWORD}", insecureSkipVerify: true}
@@ -48,8 +48,8 @@ func TestLoadDefaultsIntervalToPerfGranularity(t *testing.T) {
 	if cfg.Collection.Interval.String() != "5m0s" {
 		t.Fatalf("interval default = %s, want 5m0s (diagnostic perf granularity)", cfg.Collection.Interval)
 	}
-	if cfg.Server.Port != "9104" {
-		t.Fatalf("port default = %s, want 9104", cfg.Server.Port)
+	if cfg.Server.Port != "9443" {
+		t.Fatalf("port default = %s, want 9443", cfg.Server.Port)
 	}
 }
 
