@@ -7,6 +7,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Docs](https://github.com/fjacquet/pmax_exporter/actions/workflows/docs.yml/badge.svg)](https://fjacquet.github.io/pmax_exporter/)
 [![Container image](https://img.shields.io/badge/GHCR-pmax__exporter-2496ED?logo=docker&logoColor=white)](https://github.com/fjacquet/pmax_exporter/pkgs/container/pmax_exporter)
+[![License](https://img.shields.io/github/license/fjacquet/pmax_exporter)](https://github.com/fjacquet/pmax_exporter/blob/HEAD/LICENSE)
 
 Prometheus + OTLP exporter for **Dell PowerMax**, via the Unisphere for PowerMax REST
 API. One process monitors any number of Unisphere instances and arrays.
