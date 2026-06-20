@@ -1,6 +1,7 @@
 site_name: pmax_exporter
 site_description: Prometheus + OTLP exporter for Dell PowerMax
 repo_url: https://github.com/fjacquet/pmax_exporter
+repo_name: fjacquet/pmax_exporter
 theme:
   name: material
   features: [navigation.sections, navigation.top, content.code.copy]
@@ -31,3 +32,6 @@ nav:
       - 0010 Spec validation CI gate: adr/0010-spec-validation-ci-gate.md
       - 0011 Windows trace binary: adr/0011-windows-binary-for-trace-capture.md
       - 0012 Opt-in volume collectors: adr/0012-opt-in-volume-collectors.md
+
+extra:
+  version: v0.5.2
