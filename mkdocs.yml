@@ -20,6 +20,7 @@ nav:
   - Metrics reference: metrics.md
   - Deployment:
       - Docker: deployment/docker.md
+      - systemd: deployment/systemd.md
   - Architecture decisions:
       - Overview: adr/index.md
       - 0001 CI & supply-chain: adr/0001-ci-supply-chain-hardening.md
