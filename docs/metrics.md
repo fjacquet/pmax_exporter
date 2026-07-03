@@ -23,6 +23,7 @@ page.
 
 | Metric | Labels | Description |
 |---|---|---|
+| `pmax_exporter_build_info` | version, goversion | always 1; the running exporter version and Go version. Exporter-level — unlike the `pmax_` metrics it carries no per-target identity label (no `server`/`array`) |
 | `pmax_up` | server | 1 if the instance was reachable and every collector succeeded |
 | `pmax_collector_up` | server, collector | per-collector success flag |
 | `pmax_array_perf_timestamp_seconds` | server, array | epoch of the newest diagnostic datapoint (alert on staleness) |
