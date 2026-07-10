@@ -8,6 +8,10 @@ All notable changes to this project are documented here. The format is based on
 
 ## [0.5.6] - 2026-07-10
 
+### Security
+- **Bump Go to 1.26.5** to clear `GO-2026-5856` (a `crypto/tls` standard-library
+  vulnerability fixed in go1.26.5), which `govulncheck` flags in `make ci`.
+
 ### Fixed
 - **Multi-arch GHCR image publishing restored.** The `.goreleaser.yaml` was missing a
   `dockers_v2` block, so releases since the image mechanism was dropped published binaries
