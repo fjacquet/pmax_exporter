@@ -69,6 +69,31 @@ sboms:
     cmd: cyclonedx-gomod
     args: ["mod", "-licenses", "-json", "-output", "$document", "../"]
 
+# Multi-arch GHCR image via buildx. sbom:true attaches SBOM + provenance
+# attestations natively (same posture as the former docker/build-push-action job).
+dockers_v2:
+  - id: pmax_exporter
+    ids:
+      - pmax_exporter
+    dockerfile: Dockerfile.goreleaser
+    images:
+      - "ghcr.io/fjacquet/pmax_exporter"
+    tags:
+      - "{{ .Version }}"
+      - "{{ .Major }}.{{ .Minor }}"
+      - "{{ if not .Prerelease }}latest{{ end }}"
+    platforms:
+      - linux/amd64
+      - linux/arm64
+    extra_files:
+      - config.yaml
+    labels:
+      org.opencontainers.image.title: "{{ .ProjectName }}"
+      org.opencontainers.image.version: "{{ .Version }}"
+      org.opencontainers.image.revision: "{{ .FullCommit }}"
+      org.opencontainers.image.source: "https://github.com/fjacquet/pmax_exporter"
+    sbom: true
+
 # Homebrew cask (macOS only). Published to a separate tap repo via a cross-repo PAT
 # (HOMEBREW_TAP_GITHUB_TOKEN); the default GITHUB_TOKEN cannot push to another repo.
 # skip_upload keeps releases and local snapshots working until that secret + tap exist.

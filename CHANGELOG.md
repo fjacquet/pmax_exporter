@@ -6,6 +6,15 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.5.6] - 2026-07-10
+
+### Fixed
+- **Multi-arch GHCR image publishing restored.** The `.goreleaser.yaml` was missing a
+  `dockers_v2` block, so releases since the image mechanism was dropped published binaries
+  but never a container — `ghcr.io/fjacquet/pmax_exporter` was frozen at `0.5.1`. Added the
+  `dockers_v2` image (linux/amd64+arm64, SBOM + provenance attestations) and updated
+  `Dockerfile.goreleaser` to copy the per-platform `${TARGETPLATFORM}` binary buildx lays out.
+
 ## [0.5.5] - 2026-07-03
 
 ### Added
