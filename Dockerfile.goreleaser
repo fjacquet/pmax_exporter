@@ -1,6 +1,10 @@
-# Release image: copies the prebuilt GoReleaser binary (no in-image compile).
+# Release image for GoReleaser (dockers_v2). The binary is cross-compiled by the
+# build pipe; buildx lays it out per-platform as ${TARGETPLATFORM}/pmax_exporter in
+# the build context. For local/dev builds from source, use the multi-stage ./Dockerfile.
 FROM gcr.io/distroless/static:nonroot
-COPY pmax_exporter /pmax_exporter
+ARG TARGETPLATFORM
+COPY ${TARGETPLATFORM}/pmax_exporter /pmax_exporter
+COPY config.yaml /etc/pmax_exporter/config.yaml
 USER nonroot:nonroot
 EXPOSE 9443
 ENTRYPOINT ["/pmax_exporter"]
