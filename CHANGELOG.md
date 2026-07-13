@@ -6,6 +6,12 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-07-14
+
+### Added
+
+- **Env-driven TLS verification skip (`PMAX1_SKIP_CERTIFICATE`)** — the per-server `insecureSkipVerify` setting now accepts either a native YAML boolean or a `${VAR}` environment reference (e.g. `${PMAX1_SKIP_CERTIFICATE}`), resolved at startup, matching the existing `${PMAX1_*}` pattern. The active default is unchanged; the env form is opt-in via a documented comment in `config.yaml`.
+
 ## [0.5.6] - 2026-07-10
 
 ### Security
