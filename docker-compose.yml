@@ -16,6 +16,7 @@ services:
       PMAX1_HOSTNAME: ${PMAX1_HOSTNAME:-unisphere01.example.com}
       PMAX1_USERNAME: ${PMAX1_USERNAME:-pmax-monitor}
       PMAX1_PASSWORD: ${PMAX1_PASSWORD:-changeme}
+      PMAX1_SKIP_CERTIFICATE: ${PMAX1_SKIP_CERTIFICATE:-false}
     volumes:
       - ./config.yaml:/etc/pmax_exporter/config.yaml:ro
     ports:

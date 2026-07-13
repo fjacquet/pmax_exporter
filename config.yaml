@@ -25,6 +25,11 @@ servers:
     port: 8443
     username: "${PMAX1_USERNAME}"
     password: "${PMAX1_PASSWORD}"
-    insecureSkipVerify: true
+    # Skip TLS certificate verification for this Unisphere instance (INSECURE — use
+    # only on a trusted network / with self-signed certs). Accepts a native boolean
+    # or a ${VAR} reference resolved at startup:
+    #   insecureSkipVerify: true
+    #   insecureSkipVerify: ${PMAX1_SKIP_CERTIFICATE}
+    insecureSkipVerify: ${PMAX1_SKIP_CERTIFICATE}
     apiVersion: "100"   # Unisphere REST version prefix for /system and /sloprovisioning
     arrays: []          # optional symmetrixId allowlist; empty = all perf-registered local arrays

@@ -154,6 +154,99 @@ servers:
 	}
 }
 
+func TestLoadInsecureSkipVerifyNativeBool(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "c.yaml")
+	yaml := `
+servers:
+  - {name: uni01, host: h, username: u, password: p, insecureSkipVerify: true}
+`
+	_ = os.WriteFile(path, []byte(yaml), 0o600)
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if !cfg.Servers[0].InsecureSkipVerify.Bool() {
+		t.Fatal("insecureSkipVerify = false, want true (native bool)")
+	}
+}
+
+func TestLoadInsecureSkipVerifyEnvRefTrue(t *testing.T) {
+	t.Setenv("PMAX01_SKIP_CERTIFICATE", "true")
+	dir := t.TempDir()
+	path := filepath.Join(dir, "c.yaml")
+	yaml := `
+servers:
+  - {name: uni01, host: h, username: u, password: p, insecureSkipVerify: "${PMAX01_SKIP_CERTIFICATE}"}
+`
+	_ = os.WriteFile(path, []byte(yaml), 0o600)
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if !cfg.Servers[0].InsecureSkipVerify.Bool() {
+		t.Fatal("insecureSkipVerify = false, want true (resolved from env)")
+	}
+}
+
+func TestLoadInsecureSkipVerifyEnvRefFalse(t *testing.T) {
+	t.Setenv("PMAX01_SKIP_CERTIFICATE", "false")
+	dir := t.TempDir()
+	path := filepath.Join(dir, "c.yaml")
+	yaml := `
+servers:
+  - {name: uni01, host: h, username: u, password: p, insecureSkipVerify: "${PMAX01_SKIP_CERTIFICATE}"}
+`
+	_ = os.WriteFile(path, []byte(yaml), 0o600)
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if cfg.Servers[0].InsecureSkipVerify.Bool() {
+		t.Fatal("insecureSkipVerify = true, want false (resolved from env)")
+	}
+}
+
+func TestLoadInsecureSkipVerifyOmittedDefaultsFalse(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "c.yaml")
+	_ = os.WriteFile(path, []byte("servers:\n  - {name: uni01, host: h, username: u, password: p}\n"), 0o600)
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if cfg.Servers[0].InsecureSkipVerify.Bool() {
+		t.Fatal("insecureSkipVerify = true, want false (omitted default)")
+	}
+}
+
+func TestLoadInsecureSkipVerifyUnsetEnvErrors(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "c.yaml")
+	yaml := `
+servers:
+  - {name: uni01, host: h, username: u, password: p, insecureSkipVerify: "${PMAX_SKIP_UNSET}"}
+`
+	_ = os.WriteFile(path, []byte(yaml), 0o600)
+	if _, err := Load(path); err == nil {
+		t.Fatal("expected error for unset insecureSkipVerify env var reference")
+	}
+}
+
+func TestLoadInsecureSkipVerifyNonBoolErrors(t *testing.T) {
+	t.Setenv("PMAX01_SKIP_CERTIFICATE", "not-a-bool")
+	dir := t.TempDir()
+	path := filepath.Join(dir, "c.yaml")
+	yaml := `
+servers:
+  - {name: uni01, host: h, username: u, password: p, insecureSkipVerify: "${PMAX01_SKIP_CERTIFICATE}"}
+`
+	_ = os.WriteFile(path, []byte(yaml), 0o600)
+	if _, err := Load(path); err == nil {
+		t.Fatal("expected error for non-boolean insecureSkipVerify env value")
+	}
+}
+
 func TestLoadReadsPasswordFile(t *testing.T) {
 	dir := t.TempDir()
 	pwPath := filepath.Join(dir, "secret")
