@@ -7,14 +7,14 @@ import (
 )
 
 func TestLoadInterpolatesEnvAndDefaults(t *testing.T) {
-	t.Setenv("PMAX01_PASSWORD", "s3cret")
+	t.Setenv("PMAX1_PASSWORD", "s3cret")
 	dir := t.TempDir()
 	path := filepath.Join(dir, "config.yaml")
 	yaml := `
 server: {host: "0.0.0.0", port: "9443", uri: "/metrics"}
 collection: {interval: "5m", timeout: "120s"}
 servers:
-  - {name: uni01, host: uni01.example.com, username: u, password: "${PMAX01_PASSWORD}", insecureSkipVerify: true}
+  - {name: uni01, host: uni01.example.com, username: u, password: "${PMAX1_PASSWORD}", insecureSkipVerify: true}
 `
 	if err := os.WriteFile(path, []byte(yaml), 0o600); err != nil {
 		t.Fatal(err)
@@ -97,17 +97,17 @@ servers:
 }
 
 func TestLoadInterpolatesHostAndUsername(t *testing.T) {
-	t.Setenv("PMAX01_HOSTNAME", "uni-from-env.example.com")
-	t.Setenv("PMAX01_USERNAME", "env-monitor")
-	t.Setenv("PMAX01_PASSWORD", "env-secret")
+	t.Setenv("PMAX1_HOSTNAME", "uni-from-env.example.com")
+	t.Setenv("PMAX1_USERNAME", "env-monitor")
+	t.Setenv("PMAX1_PASSWORD", "env-secret")
 	dir := t.TempDir()
 	path := filepath.Join(dir, "config.yaml")
 	yaml := `
 servers:
   - name: uni01
-    host: "${PMAX01_HOSTNAME}"
-    username: "${PMAX01_USERNAME}"
-    password: "${PMAX01_PASSWORD}"
+    host: "${PMAX1_HOSTNAME}"
+    username: "${PMAX1_USERNAME}"
+    password: "${PMAX1_PASSWORD}"
 `
 	if err := os.WriteFile(path, []byte(yaml), 0o600); err != nil {
 		t.Fatal(err)
@@ -172,12 +172,12 @@ servers:
 }
 
 func TestLoadInsecureSkipVerifyEnvRefTrue(t *testing.T) {
-	t.Setenv("PMAX01_SKIP_CERTIFICATE", "true")
+	t.Setenv("PMAX1_SKIP_CERTIFICATE", "true")
 	dir := t.TempDir()
 	path := filepath.Join(dir, "c.yaml")
 	yaml := `
 servers:
-  - {name: uni01, host: h, username: u, password: p, insecureSkipVerify: "${PMAX01_SKIP_CERTIFICATE}"}
+  - {name: uni01, host: h, username: u, password: p, insecureSkipVerify: "${PMAX1_SKIP_CERTIFICATE}"}
 `
 	_ = os.WriteFile(path, []byte(yaml), 0o600)
 	cfg, err := Load(path)
@@ -190,12 +190,12 @@ servers:
 }
 
 func TestLoadInsecureSkipVerifyEnvRefFalse(t *testing.T) {
-	t.Setenv("PMAX01_SKIP_CERTIFICATE", "false")
+	t.Setenv("PMAX1_SKIP_CERTIFICATE", "false")
 	dir := t.TempDir()
 	path := filepath.Join(dir, "c.yaml")
 	yaml := `
 servers:
-  - {name: uni01, host: h, username: u, password: p, insecureSkipVerify: "${PMAX01_SKIP_CERTIFICATE}"}
+  - {name: uni01, host: h, username: u, password: p, insecureSkipVerify: "${PMAX1_SKIP_CERTIFICATE}"}
 `
 	_ = os.WriteFile(path, []byte(yaml), 0o600)
 	cfg, err := Load(path)
@@ -234,12 +234,12 @@ servers:
 }
 
 func TestLoadInsecureSkipVerifyNonBoolErrors(t *testing.T) {
-	t.Setenv("PMAX01_SKIP_CERTIFICATE", "not-a-bool")
+	t.Setenv("PMAX1_SKIP_CERTIFICATE", "not-a-bool")
 	dir := t.TempDir()
 	path := filepath.Join(dir, "c.yaml")
 	yaml := `
 servers:
-  - {name: uni01, host: h, username: u, password: p, insecureSkipVerify: "${PMAX01_SKIP_CERTIFICATE}"}
+  - {name: uni01, host: h, username: u, password: p, insecureSkipVerify: "${PMAX1_SKIP_CERTIFICATE}"}
 `
 	_ = os.WriteFile(path, []byte(yaml), 0o600)
 	if _, err := Load(path); err == nil {

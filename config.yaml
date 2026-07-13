@@ -28,8 +28,7 @@ servers:
     # Skip TLS certificate verification for this Unisphere instance (INSECURE — use
     # only on a trusted network / with self-signed certs). Accepts a native boolean
     # or a ${VAR} reference resolved at startup:
-    #   insecureSkipVerify: true
-    #   insecureSkipVerify: ${PMAX1_SKIP_CERTIFICATE}
-    insecureSkipVerify: ${PMAX1_SKIP_CERTIFICATE}
+    #   insecureSkipVerify: "${PMAX1_SKIP_CERTIFICATE}"
+    insecureSkipVerify: true
     apiVersion: "100"   # Unisphere REST version prefix for /system and /sloprovisioning
     arrays: []          # optional symmetrixId allowlist; empty = all perf-registered local arrays
