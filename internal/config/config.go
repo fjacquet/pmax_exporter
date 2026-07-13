@@ -5,11 +5,68 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
 	"gopkg.in/yaml.v2"
 )
+
+// EnvBool is a boolean config value that may be written in YAML either as a
+// native boolean (insecureSkipVerify: true) or as a ${VAR} environment
+// reference resolved at secret-resolution time (insecureSkipVerify:
+// ${PMAX1_SKIP_CERTIFICATE}). Backward compatible with existing native-bool
+// configs; an omitted field defaults to false.
+type EnvBool struct {
+	raw string // ${...} reference or literal string form, when written as a string
+	val bool   // resolved value
+}
+
+// NewEnvBool returns an already-resolved EnvBool (for tests / programmatic config).
+func NewEnvBool(v bool) EnvBool { return EnvBool{val: v} }
+
+// Bool returns the resolved boolean value.
+func (b EnvBool) Bool() bool { return b.val }
+
+// UnmarshalYAML accepts either a native YAML boolean or a string (which may
+// be a ${VAR} reference resolved later by Resolve).
+func (b *EnvBool) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	var bv bool
+	if err := unmarshal(&bv); err == nil {
+		b.val = bv
+		return nil
+	}
+	var s string
+	if err := unmarshal(&s); err != nil {
+		return fmt.Errorf("must be a boolean or ${ENV} reference: %w", err)
+	}
+	b.raw = s
+	return nil
+}
+
+// Resolve expands any ${VAR} reference (via expand) and parses the result to
+// a bool. No-op when the value was a native boolean or omitted. Empty
+// expansion => false; non-boolean expansion is an error.
+func (b *EnvBool) Resolve(expand func(string) (string, error)) error {
+	if b.raw == "" {
+		return nil
+	}
+	s, err := expand(b.raw)
+	if err != nil {
+		return err
+	}
+	s = strings.TrimSpace(s)
+	if s == "" {
+		b.val = false
+		return nil
+	}
+	v, err := strconv.ParseBool(s)
+	if err != nil {
+		return fmt.Errorf("cannot parse %q as boolean", s)
+	}
+	b.val = v
+	return nil
+}
 
 // Server is one Unisphere for PowerMax instance to monitor. A single Unisphere
 // can manage several arrays; Arrays optionally restricts collection to the
@@ -21,7 +78,7 @@ type Server struct {
 	Username           string   `yaml:"username"`
 	Password           string   `yaml:"password"`
 	PasswordFile       string   `yaml:"passwordFile"`
-	InsecureSkipVerify bool     `yaml:"insecureSkipVerify"`
+	InsecureSkipVerify EnvBool  `yaml:"insecureSkipVerify"`
 	APIVersion         string   `yaml:"apiVersion"` // Unisphere REST version prefix, defaults to "100"
 	Arrays             []string `yaml:"arrays"`
 }
@@ -127,6 +184,9 @@ func Load(path string) (*Config, error) {
 				return nil, fmt.Errorf("server %s passwordFile: %w", s.Name, err)
 			}
 			s.Password = strings.TrimSpace(string(b))
+		}
+		if err := s.InsecureSkipVerify.Resolve(interpolate); err != nil {
+			return nil, fmt.Errorf("server %s insecureSkipVerify: %w", s.Name, err)
 		}
 		if s.APIVersion == "" {
 			s.APIVersion = "100"

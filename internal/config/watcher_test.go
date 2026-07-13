@@ -8,13 +8,13 @@ import (
 )
 
 func TestWatcherEmitsReloadedConfig(t *testing.T) {
-	t.Setenv("PMAX01_PASSWORD", "p")
+	t.Setenv("PMAX1_PASSWORD", "p")
 	dir := t.TempDir()
 	path := filepath.Join(dir, "c.yaml")
 	write := func(port string) {
 		_ = os.WriteFile(path, []byte(
 			"server: {port: \""+port+"\"}\ncollection: {interval: 5m}\n"+
-				"servers:\n  - {name: uni01, host: h, username: u, password: \"${PMAX01_PASSWORD}\"}\n"), 0o600)
+				"servers:\n  - {name: uni01, host: h, username: u, password: \"${PMAX1_PASSWORD}\"}\n"), 0o600)
 	}
 	write("9443")
 

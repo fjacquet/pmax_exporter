@@ -173,7 +173,7 @@ func buildTargets(cfg *config.Config, trace bool) []pmax.Target {
 			Client: pmaxclient.NewServerClient(pmaxclient.Config{
 				Name: s.Name, BaseURL: s.BaseURL(), Username: s.Username,
 				Password: s.Password, APIVersion: s.APIVersion,
-				InsecureSkipVerify: s.InsecureSkipVerify, Trace: trace,
+				InsecureSkipVerify: s.InsecureSkipVerify.Bool(), Trace: trace,
 			}),
 			Arrays: s.Arrays,
 		})
