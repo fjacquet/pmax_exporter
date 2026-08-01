@@ -18,3 +18,4 @@ Status / Context / Decision / Consequences.
 | [0011](0011-windows-binary-for-trace-capture.md) | Windows binary for trace capture |
 | [0012](0012-opt-in-volume-collectors.md) | Opt-in volume (LUN) collectors & cost model |
 | [0013](0013-health-always-200-and-static-probes.md) | `/livez`/`/readyz` static probes; `/health` always answers 200 |
+| [0014](0014-alpine-standard.md) | Standardize container base image on Alpine |
