@@ -2,9 +2,21 @@
 
 ## Image
 
-`ghcr.io/fjacquet/pmax_exporter` — distroless static, non-root, multi-arch
-(linux/amd64, linux/arm64), published with SBOM + provenance attestations on every
-release tag.
+`ghcr.io/fjacquet/pmax_exporter` is built `FROM alpine:latest` and contains the
+exporter binary, the Alpine/busybox userland (a shell, `wget`, and the rest of
+the base image), and its CA bundle. Unlike a distroless image, you *can*
+`docker exec -it … sh` into a running container to look around, and the image
+ships a Docker `HEALTHCHECK` that runs `wget` against `/livez` from inside the
+container every 30 seconds:
+
+```
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD wget --quiet --tries=1 --spider http://127.0.0.1:9443/livez || exit 1
+```
+
+It runs as the named `pmax` user (uid 10001), non-root, multi-arch
+(linux/amd64, linux/arm64), published with SBOM + provenance attestations on
+every release tag.
 
 ## Run
 
@@ -33,4 +45,19 @@ scrape_configs:
 
 ## Compose
 
-See `docker-compose.yml` at the repo root for the exporter + Prometheus quickstart stack.
+See `docker-compose.yml` at the repo root for the exporter + Prometheus + Grafana
+quickstart stack. It builds the exporter image locally (`build: .`).
+
+`docker-compose.ghcr.yml` is the same stack, but pulls the published
+`ghcr.io/fjacquet/pmax_exporter` image instead of building it — useful when you
+just want to run the demo without a local Go toolchain or Docker build step:
+
+```bash
+docker compose -f docker-compose.ghcr.yml up -d
+```
+
+Pin a version with `PMAX_TAG` (defaults to `latest`):
+
+```bash
+PMAX_TAG=0.7.0 docker compose -f docker-compose.ghcr.yml up -d
+```
