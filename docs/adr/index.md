@@ -17,3 +17,4 @@ Status / Context / Decision / Consequences.
 | [0010](0010-spec-validation-ci-gate.md) | Catalog & dashboard validation against vendored OpenAPI spec |
 | [0011](0011-windows-binary-for-trace-capture.md) | Windows binary for trace capture |
 | [0012](0012-opt-in-volume-collectors.md) | Opt-in volume (LUN) collectors & cost model |
+| [0013](0013-health-always-200-and-static-probes.md) | `/livez`/`/readyz` static probes; `/health` always answers 200 |

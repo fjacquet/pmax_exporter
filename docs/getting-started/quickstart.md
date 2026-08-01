@@ -37,4 +37,7 @@ The first run against a real Unisphere should validate the provisional metric ca
 curl -s localhost:9443/health | jq
 ```
 
-Returns 503 until every configured instance has a healthy collection cycle.
+Always returns 200. Read the JSON body's per-server `ok`/`err` fields to tell
+whether an instance is degraded — the status code no longer carries that signal.
+Kubernetes probes use `/livez`/`/readyz` instead, which are also always-200 and
+carry no cluster state.
