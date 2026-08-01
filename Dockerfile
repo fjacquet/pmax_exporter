@@ -7,9 +7,31 @@ COPY . .
 ARG VERSION=dev
 RUN CGO_ENABLED=0 go build -ldflags "-s -w -X main.version=${VERSION}" -o /out/pmax_exporter .
 
-FROM gcr.io/distroless/static:nonroot
-COPY --from=build /out/pmax_exporter /pmax_exporter
-USER nonroot:nonroot
+FROM alpine:latest
+
+# Create the runtime user and log dir. These are busybox builtins (no network).
+RUN adduser -D -u 10001 pmax && \
+    mkdir -p /var/log/pmax_exporter && \
+    chown pmax:pmax /var/log/pmax_exporter
+
+# Copy the CA bundle from the builder stage instead of `apk add ca-certificates`.
+# The latter fetches from the Alpine CDN over TLS, which fails behind a corporate
+# MITM proxy: the bare alpine image has no CA bundle yet to validate the proxy
+# cert (chicken-and-egg). The Debian-based golang builder already ships the bundle.
+COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+
+COPY --from=build /out/pmax_exporter /usr/bin/pmax_exporter
+COPY config.yaml /etc/pmax_exporter/config.yaml
+
 EXPOSE 9443
-ENTRYPOINT ["/pmax_exporter"]
+
+# /livez never depends on target reachability or the collection cycle, so it
+# can never flag a healthy process as down over an unreachable Unisphere
+# instance (see ADR-000N).
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD wget --quiet --tries=1 --spider http://127.0.0.1:9443/livez || exit 1
+
+USER pmax
+
+ENTRYPOINT ["/usr/bin/pmax_exporter"]
 CMD ["--config", "/etc/pmax_exporter/config.yaml"]
