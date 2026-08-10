@@ -1,7 +1,7 @@
 # Release image for GoReleaser (dockers_v2). The binary is cross-compiled by the
 # build pipe; buildx lays it out per-platform as ${TARGETPLATFORM}/pmax_exporter in
 # the build context. For local/dev builds from source, use the multi-stage ./Dockerfile.
-FROM alpine:latest
+FROM docker.io/library/alpine:latest
 
 RUN apk --no-cache add ca-certificates && \
     adduser -D -u 10001 pmax && \
