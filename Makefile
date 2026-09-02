@@ -9,7 +9,7 @@ LDFLAGS := -s -w -X main.version=$(VERSION)
 # Pinned tool versions (installed by `make tools`).
 # Go 1.26.x: canonical versions (goreleaser v2.16+ requires Go 1.26).
 GOLANGCI_VERSION      ?= v2.12.2
-GORELEASER_VERSION    ?= v2.16.0
+GORELEASER_VERSION    ?= v2.18.0
 CYCLONEDX_GOMOD_VERSION ?= latest
 
 .PHONY: all clean install tools lint format test build vuln sbom security docs coverage-upload release ci \
