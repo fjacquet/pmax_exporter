@@ -22,6 +22,12 @@ All notable changes to this project are documented here. The format is based on
   yet still resolves to `true` — this repo's original shipped default — on a host that
   never exported the variable.
 
+### Security
+
+- Build with Go 1.27.2, fixing standard-library vulnerabilities reported by govulncheck in net/http, net/http/internal/http2, crypto/tls and mime/multipart (GO-2026-6603, -6605, -6607, -6608, -6610, -6611, -6613, -6617). Also pulls golang.org/x/net v0.60.0 (the fixed floor).
+- Update dependencies: prometheus/client_golang v1.25.0, OpenTelemetry v1.47.0 (otel, metric, sdk, sdk/metric, otlpmetricgrpc), golang.org/x/net v0.60.0, golang.org/x/sync v0.24.0, golang.org/x/sys v0.49.0, golang.org/x/text v0.42.0, google.golang.org/grpc v1.84.0, and their transitive modules.
+- Makefile tool pin: golangci-lint v2.13.2 -> v2.14.0 (v2.13.2 cannot type-check against the Go 1.27.2 standard library).
+
 ## [1.0.0] - 2026-08-01
 
 ### Breaking
