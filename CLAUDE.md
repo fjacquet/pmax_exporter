@@ -6,7 +6,7 @@ Guidance for Claude Code in this repository. Family standard: `/exporter-standar
 ## Overview
 
 `pmax_exporter` — Prometheus + OTLP exporter for Dell PowerMax via the Unisphere REST
-API. Go 1.27.1, hand-rolled `resty/v2` client (ADR-0003: `gopowermax` declined — perf
+API. Go 1.27.2, hand-rolled `resty/v2` client (ADR-0003: `gopowermax` declined — perf
 coverage is CSI-scoped). Metric prefix `pmax_`, port **9443**.
 
 ## Commands
