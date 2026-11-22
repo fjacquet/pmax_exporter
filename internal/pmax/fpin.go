@@ -52,33 +52,22 @@ func (FPIN) Name() string { return "fpin" }
 // Collect implements ResourceCollector.
 func (FPIN) Collect(ctx context.Context, c pmaxclient.Client, arrays []ArrayWindow) ([]Sample, error) {
 	if v, err := strconv.Atoi(c.APIVersion()); err == nil && v < 105 {
+		ids := make([]string, len(arrays))
+		for i, a := range arrays {
+			ids[i] = a.ID
+		}
+		log.WithFields(log.Fields{"server": c.Name(), "array": strings.Join(ids, ","), "apiVersion": v}).
+			Info("fpin skipped: REST api version below 105")
 		return nil, nil
 	}
 	var out []Sample
 	for _, a := range arrays {
-		agg := map[fpinKey]*fpinAgg{}
-		base := EnhancedBase + "/v1/systems/" + a.ID + "/fpins?select=" + fpinSelect
-		path, pages := base, 0
-		for {
-			var r fpinResp
-			if err := c.Get(ctx, path, &r); err != nil {
-				if pmaxclient.IsNotFound(err) {
-					return out, nil // feature absent: drop this array's partial data, keep earlier arrays
-				}
-				return out, err
-			}
-			for _, it := range append(r.Results, r.Fpins...) {
-				fpinAdd(agg, it)
-			}
-			pages++
-			if r.Paging.ResumeToken == "" {
-				break
-			}
-			if pages >= fpinMaxPages {
-				log.WithField("array", a.ID).Warn("fpin: page cap reached, results truncated")
-				break
-			}
-			path = base + "&resume_token=" + url.QueryEscape(r.Paging.ResumeToken)
+		agg, err := fpinFetch(ctx, c, a)
+		if pmaxclient.IsNotFound(err) {
+			continue // feature absent for this array: drop its partial data, keep the others
+		}
+		if err != nil {
+			return out, err
 		}
 		keys := make([]fpinKey, 0, len(agg))
 		for k := range agg {
@@ -103,6 +92,34 @@ func (FPIN) Collect(ctx context.Context, c pmaxclient.Client, arrays []ArrayWind
 		}
 	}
 	return out, nil
+}
+
+func fpinFetch(ctx context.Context, c pmaxclient.Client, a ArrayWindow) (map[fpinKey]*fpinAgg, error) {
+	agg := map[fpinKey]*fpinAgg{}
+	base := EnhancedBase + "/v1/systems/" + a.ID + "/fpins?select=" + fpinSelect
+	path, pages := base, 0
+	for {
+		var r fpinResp
+		if err := c.Get(ctx, path, &r); err != nil {
+			return nil, err
+		}
+		items := r.Results
+		if len(items) == 0 {
+			items = r.Fpins // a server echoing both keys must not double-count
+		}
+		for _, it := range items {
+			fpinAdd(agg, it)
+		}
+		pages++
+		if r.Paging.ResumeToken == "" {
+			return agg, nil
+		}
+		if pages >= fpinMaxPages {
+			log.WithField("array", a.ID).Warn("fpin: page cap reached, results truncated")
+			return agg, nil
+		}
+		path = base + "&resume_token=" + url.QueryEscape(r.Paging.ResumeToken)
+	}
 }
 
 func fpinAdd(agg map[fpinKey]*fpinAgg, it fpinItem) {

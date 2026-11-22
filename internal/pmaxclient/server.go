@@ -37,8 +37,12 @@ type ServerClient struct {
 	cfg Config
 	rc  *resty.Client
 
+	ctx    context.Context // cancelled by Close; parents the version detection
+	cancel context.CancelFunc
+
 	mu       sync.Mutex
-	detected string // cached auto-detected APIVersion; empty until a detection succeeds
+	inflight chan struct{} // non-nil while one detection runs; closed when it publishes
+	detected string        // cached auto-detected APIVersion; empty until a detection succeeds
 	retryAt  time.Time
 	now      func() time.Time // test seam
 }
@@ -74,7 +78,8 @@ func NewServerClient(cfg Config) *ServerClient {
 			return nil
 		})
 	}
-	return &ServerClient{cfg: cfg, rc: rc, now: time.Now}
+	ctx, cancel := context.WithCancel(context.Background())
+	return &ServerClient{cfg: cfg, rc: rc, now: time.Now, ctx: ctx, cancel: cancel}
 }
 
 func (c *ServerClient) Name() string { return c.cfg.Name }
@@ -96,14 +101,49 @@ func (c *ServerClient) APIVersion() string {
 		return c.cfg.APIVersion
 	}
 	c.mu.Lock()
-	defer c.mu.Unlock()
 	if c.detected != "" {
+		defer c.mu.Unlock()
 		return c.detected
 	}
-	if c.now().Before(c.retryAt) {
+	if c.inflight != nil { // share the running attempt, no second request
+		done := c.inflight
+		c.mu.Unlock()
+		<-done
+		c.mu.Lock()
+		defer c.mu.Unlock()
+		if c.detected != "" {
+			return c.detected
+		}
 		return fallbackAPIVersion
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	if c.now().Before(c.retryAt) {
+		defer c.mu.Unlock()
+		return fallbackAPIVersion
+	}
+	done := make(chan struct{})
+	c.inflight = done
+	c.mu.Unlock()
+
+	v, err := c.detectVersion()
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.inflight = nil
+	close(done)
+	if err != nil {
+		c.retryAt = c.now().Add(detectRetryAfter)
+		log.WithField("server", c.cfg.Name).WithError(err).
+			Warnf("apiVersion auto-detect failed; using %s, retrying in %s", fallbackAPIVersion, detectRetryAfter)
+		return fallbackAPIVersion
+	}
+	log.WithFields(log.Fields{"server": c.cfg.Name, "apiVersion": v}).Info("apiVersion auto-detected")
+	c.detected = v
+	return v
+}
+
+// detectVersion does the I/O, outside mu; Close cancels c.ctx and aborts it.
+func (c *ServerClient) detectVersion() (string, error) {
+	ctx, cancel := context.WithTimeout(c.ctx, 30*time.Second)
 	defer cancel()
 	var v struct {
 		APIVersion string `json:"api_version"`
@@ -112,15 +152,7 @@ func (c *ServerClient) APIVersion() string {
 	if err == nil && !isDigits(v.APIVersion) {
 		err = fmt.Errorf("unusable api_version %q", v.APIVersion)
 	}
-	if err != nil {
-		c.retryAt = c.now().Add(detectRetryAfter)
-		log.WithField("server", c.cfg.Name).WithError(err).
-			Warnf("apiVersion auto-detect failed; using %s, retrying in %s", fallbackAPIVersion, detectRetryAfter)
-		return fallbackAPIVersion
-	}
-	log.WithFields(log.Fields{"server": c.cfg.Name, "apiVersion": v.APIVersion}).Info("apiVersion auto-detected")
-	c.detected = v.APIVersion
-	return c.detected
+	return v.APIVersion, err
 }
 
 // isDigits guards the value spliced into request paths.
@@ -168,8 +200,10 @@ func (c *ServerClient) Post(ctx context.Context, path string, body, out any) err
 	return nil
 }
 
-// Close releases idle connections. Basic auth has no server-side session to end.
+// Close aborts any in-flight version detection and releases idle connections.
+// Basic auth has no server-side session to end.
 func (c *ServerClient) Close() error {
+	c.cancel()
 	c.rc.GetClient().CloseIdleConnections()
 	return nil
 }

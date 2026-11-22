@@ -50,7 +50,9 @@ vendored:
   inventory.
 - One extra GET per server per client lifetime (a config reload builds a new client and
   re-detects).
-- A failing detection blocks for up to 30 s, serialized per server, but failures are
-  negatively cached for 1 minute (the fallback is returned with no request meanwhile), so
-  at most one 30 s wait per minute per server.
+- A failing detection takes up to 30 s but holds no lock across the request: concurrent
+  callers wait on that one attempt and share its result (no second request), and
+  `Close()` (shutdown/reload) aborts it. Failures are negatively cached for 1 minute (the
+  fallback is returned with no request meanwhile), so at most one 30 s wait per minute
+  per server.
 - Live-array validation (ADR-0009) is still pending; spec agreement is not proof.
