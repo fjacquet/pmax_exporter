@@ -39,6 +39,8 @@ type ServerClient struct {
 
 	mu       sync.Mutex
 	detected string // cached auto-detected APIVersion; empty until a detection succeeds
+	retryAt  time.Time
+	now      func() time.Time // test seam
 }
 
 // NewServerClient builds a client.
@@ -72,7 +74,7 @@ func NewServerClient(cfg Config) *ServerClient {
 			return nil
 		})
 	}
-	return &ServerClient{cfg: cfg, rc: rc}
+	return &ServerClient{cfg: cfg, rc: rc, now: time.Now}
 }
 
 func (c *ServerClient) Name() string { return c.cfg.Name }
@@ -81,11 +83,14 @@ func (c *ServerClient) Name() string { return c.cfg.Name }
 // Unisphere 10.x up to 10.2 serves it (ADR-0015).
 const fallbackAPIVersion = "100"
 
+// detectRetryAfter bounds how often a failing detection (up to 30 s) is retried.
+const detectRetryAfter = time.Minute
+
 // APIVersion returns the configured versioned-namespace prefix or, when none is
 // configured, the server's own api_version from GET /univmax/restapi/version.
 // Dell documents N-2 REST version support (10.0–10.2), so a fixed default is
 // expected to go stale across upgrades. A detection is cached on success; a failure falls back to "100"
-// and is retried on the next call.
+// and is retried after detectRetryAfter, with no network call meanwhile.
 func (c *ServerClient) APIVersion() string {
 	if c.cfg.APIVersion != "" {
 		return c.cfg.APIVersion
@@ -95,19 +100,40 @@ func (c *ServerClient) APIVersion() string {
 	if c.detected != "" {
 		return c.detected
 	}
+	if c.now().Before(c.retryAt) {
+		return fallbackAPIVersion
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	var v struct {
 		APIVersion string `json:"api_version"`
 	}
-	if err := c.Get(ctx, "/univmax/restapi/version", &v); err != nil || v.APIVersion == "" {
+	err := c.Get(ctx, "/univmax/restapi/version", &v)
+	if err == nil && !isDigits(v.APIVersion) {
+		err = fmt.Errorf("unusable api_version %q", v.APIVersion)
+	}
+	if err != nil {
+		c.retryAt = c.now().Add(detectRetryAfter)
 		log.WithField("server", c.cfg.Name).WithError(err).
-			Warnf("apiVersion auto-detect failed; using %s for this call", fallbackAPIVersion)
+			Warnf("apiVersion auto-detect failed; using %s, retrying in %s", fallbackAPIVersion, detectRetryAfter)
 		return fallbackAPIVersion
 	}
 	log.WithFields(log.Fields{"server": c.cfg.Name, "apiVersion": v.APIVersion}).Info("apiVersion auto-detected")
 	c.detected = v.APIVersion
 	return c.detected
+}
+
+// isDigits guards the value spliced into request paths.
+func isDigits(s string) bool {
+	if s == "" {
+		return false
+	}
+	for _, r := range s {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return true
 }
 
 // Get fetches path and decodes the JSON response into out. ForceContentType

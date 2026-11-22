@@ -7,7 +7,7 @@ import (
 	"github.com/fjacquet/pmax_exporter/internal/pmaxclient"
 )
 
-const fpinPath = "/univmax/rest/v1/systems/000297900046/fpins?select=director_port,fpin_type,detected_time,director"
+const fpinPath = "/univmax/rest/v1/systems/000297900046/fpins?select=director_port,fpin_type,detected_time"
 
 const fpinItems = `[{"director_port":"FA-1D:4","fpin_type":"Congestion","detected_time":1708451234000,"director":{"id":"FA-1D"}},{"director_port":"FA-1D:4","fpin_type":"Congestion","detected_time":1708451299000},{"director_port":"FA-2D:5","fpin_type":"Delivery","detected_time":1708000000000}]`
 
@@ -126,7 +126,7 @@ func TestRegistryIncludesFPIN(t *testing.T) {
 func TestFPINNotFoundKeepsEarlierArrays(t *testing.T) {
 	m := fpinMock("105")
 	m.SetJSON(fpinPath, `{"results":`+fpinItems+`}`)
-	p2 := "/univmax/rest/v1/systems/000297900047/fpins?select=director_port,fpin_type,detected_time,director"
+	p2 := "/univmax/rest/v1/systems/000297900047/fpins?select=director_port,fpin_type,detected_time"
 	m.SetGetError(p2, &pmaxclient.StatusError{Method: "GET", Path: p2, Code: 404})
 	arrays := []ArrayWindow{testArrays[0], {ID: "000297900047", Last: 1}}
 	samples, err := FPIN{}.Collect(context.Background(), m, arrays)

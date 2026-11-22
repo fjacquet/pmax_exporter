@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -166,10 +167,12 @@ func TestAPIVersionConfiguredSkipsDetection(t *testing.T) {
 	}
 }
 
-func TestAPIVersionDetectionFailureFallsBackAndRetries(t *testing.T) {
+func TestAPIVersionDetectionFailureNegativeCachesThenRetries(t *testing.T) {
 	var fail atomic.Bool
+	var hits atomic.Int32
 	fail.Store(true)
 	c := newTestClient(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		hits.Add(1)
 		if fail.Load() {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
@@ -177,13 +180,31 @@ func TestAPIVersionDetectionFailureFallsBackAndRetries(t *testing.T) {
 		_, _ = w.Write([]byte(`{"api_version":"104"}`))
 	}), false)
 	defer func() { _ = c.Close() }()
+	clock := time.Now()
+	c.now = func() time.Time { return clock }
 
 	if got := c.APIVersion(); got != "100" {
 		t.Fatalf("APIVersion on failure = %q, want fallback 100", got)
 	}
+	after := hits.Load()
 	fail.Store(false)
+	clock = clock.Add(30 * time.Second)
+	if got := c.APIVersion(); got != "100" || hits.Load() != after {
+		t.Fatalf("within window: got %q, hits %d->%d; want fallback and no request", got, after, hits.Load())
+	}
+	clock = clock.Add(31 * time.Second)
 	if got := c.APIVersion(); got != "104" {
-		t.Fatalf("APIVersion after recovery = %q, want 104 (failure not cached)", got)
+		t.Fatalf("after window = %q, want 104", got)
+	}
+}
+
+func TestAPIVersionRejectsNonDigits(t *testing.T) {
+	c := newTestClient(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"api_version":"1/../x"}`))
+	}), false)
+	defer func() { _ = c.Close() }()
+	if got := c.APIVersion(); got != "100" {
+		t.Fatalf("APIVersion = %q, want fallback 100", got)
 	}
 }
 
