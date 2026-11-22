@@ -18,6 +18,7 @@ page.
 | `storage_group` | storage-group and volume categories | storage group ID |
 | `volume` | volume category (opt-in) | device ID |
 | `srp` | SRP metrics | storage resource pool ID |
+| `fpin_type` | FPIN metrics | fabric notification type (e.g. congestion, link integrity) |
 
 ## Exporter health
 
@@ -175,6 +176,17 @@ Only the first list page (1000 volumes per SG) is read; truncation is logged.
 | `pmax_volume_capacity_gigabytes` | server, array, volume | GB |
 | `pmax_volume_allocated_percent` | server, array, volume | % |
 | `pmax_volume_info` | server, array, volume, wwn, identifier, type, storage_groups | 1 |
+
+## SAN fabric FPIN (`GET /univmax/rest/v1/systems/{id}/fpins`)
+
+Unisphere 10.5+ Enhanced Endpoints (`/univmax/rest` root); collector `fpin`. Silent on
+older Unisphere (version gate) or when the endpoint 404s. Values are snapshot counts, not
+rates.
+
+| Metric | Labels | Description |
+|---|---|---|
+| `pmax_fpin_events` | server, array, director, port, fpin_type | FPIN events currently reported for the port and type |
+| `pmax_fpin_last_detected_timestamp_seconds` | server, array, director, port, fpin_type | epoch of the most recent event (absent if unreported) |
 
 ## Deferred (backlog)
 

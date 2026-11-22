@@ -20,8 +20,7 @@ vendored:
   gate's exact-case membership check could not cover these fields against 10.4. It can
   against 10.5.
 - **Removed:** the `/{ver}/file` (eNAS) namespace, 135 paths. The exporter never used it.
-- **New, not adopted:** Enhanced Endpoints `/v1/systems/{id}/realtime-categories` and
-  `/fpins`. Real-time (seconds) data conflicts with the 5-minute diagnostic-granularity
+- **New, not adopted:** Enhanced Endpoint `/v1/systems/{id}/realtime-categories`. Real-time (seconds) data conflicts with the 5-minute diagnostic-granularity
   default (ADR-0002), so it needs its own decision.
 - **Versioned prefix:** the 10.5 spec documents only `/105/...`. Dell's 10.0–10.2 notes
   describe N-2 REST version support, so a 10.5 server is expected to drop `/100/`, which
@@ -41,6 +40,9 @@ vendored:
    recovers without a restart. An explicit `apiVersion` always wins and skips detection.
    Only `/system` and `/sloprovisioning` calls use the prefix; `/performance` is
    unversioned and unaffected.
+4. FPIN is adopted: collector `fpin` reads `/univmax/rest/v1/systems/{id}/fpins` (the
+   Enhanced Endpoints root, not `/univmax/restapi`) as per-port snapshot counts, gated
+   to Unisphere >= 10.5 and silent on 404. Real-time endpoints remain out of scope.
 
 ## Consequences
 
