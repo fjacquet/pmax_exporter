@@ -15,11 +15,13 @@ type Mock struct {
 	gets     map[string]string
 	posts    map[string]string
 	postFunc func(path string, body any) (string, bool)
+	version  string
+	getErrs  map[string]error
 }
 
 // NewMock returns an empty Mock for the named Unisphere instance.
 func NewMock(name string) *Mock {
-	return &Mock{name: name, gets: map[string]string{}, posts: map[string]string{}}
+	return &Mock{name: name, gets: map[string]string{}, posts: map[string]string{}, version: "100", getErrs: map[string]error{}}
 }
 
 // SetJSON registers a response body for an exact GET path.
@@ -32,10 +34,19 @@ func (m *Mock) SetPostJSON(path, body string) { m.posts[path] = body }
 // test vary the response by request body (e.g. per directorId).
 func (m *Mock) SetPostFunc(f func(path string, body any) (string, bool)) { m.postFunc = f }
 
+// SetAPIVersion overrides the REST version APIVersion reports (default "100").
+func (m *Mock) SetAPIVersion(v string) { m.version = v }
+
+// SetGetError makes Get(path) fail with err, taking precedence over SetJSON.
+func (m *Mock) SetGetError(path string, err error) { m.getErrs[path] = err }
+
 func (m *Mock) Name() string       { return m.name }
-func (m *Mock) APIVersion() string { return "100" }
+func (m *Mock) APIVersion() string { return m.version }
 
 func (m *Mock) Get(_ context.Context, path string, out any) error {
+	if err, ok := m.getErrs[path]; ok {
+		return err
+	}
 	body, ok := m.gets[path]
 	if !ok {
 		return fmt.Errorf("mock: no GET response registered for %s", path)

@@ -2,6 +2,7 @@ package pmaxclient
 
 import (
 	"context"
+	"errors"
 	"testing"
 )
 
@@ -46,5 +47,23 @@ func TestMockPostFuncVariesByBody(t *testing.T) {
 	}
 	if err := m.Post(context.Background(), "/p", map[string]any{"directorId": "FA-2D"}, &out); err != nil || out.Hit != 0 {
 		t.Fatalf("static fallback path: err=%v out=%+v", err, out)
+	}
+}
+
+func TestMockSetAPIVersionAndGetError(t *testing.T) {
+	m := NewMock("uni01")
+	if m.APIVersion() != "100" {
+		t.Fatalf("default version = %s", m.APIVersion())
+	}
+	m.SetAPIVersion("105")
+	if m.APIVersion() != "105" {
+		t.Fatalf("version = %s", m.APIVersion())
+	}
+	sentinel := errors.New("boom")
+	m.SetJSON("/p", `{}`)
+	m.SetGetError("/p", sentinel)
+	var out struct{}
+	if err := m.Get(context.Background(), "/p", &out); !errors.Is(err, sentinel) {
+		t.Fatalf("Get err = %v", err)
 	}
 }
