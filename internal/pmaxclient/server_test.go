@@ -127,3 +127,61 @@ func TestTraceNeverLogsCredentials(t *testing.T) {
 		}
 	}
 }
+
+func TestAPIVersionAutoDetectsAndCaches(t *testing.T) {
+	var hits atomic.Int32
+	c := newTestClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/univmax/restapi/version" {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		hits.Add(1)
+		_, _ = w.Write([]byte(`{"version":"T10.5.0.1","api_version":"105","supported_api_versions":["105","104","103"]}`))
+	}), false)
+	defer func() { _ = c.Close() }()
+
+	for range 3 {
+		if got := c.APIVersion(); got != "105" {
+			t.Fatalf("APIVersion = %q, want 105", got)
+		}
+	}
+	if n := hits.Load(); n != 1 {
+		t.Fatalf("version endpoint hit %d times, want 1 (cached)", n)
+	}
+}
+
+func TestAPIVersionConfiguredSkipsDetection(t *testing.T) {
+	var hits atomic.Int32
+	ts := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		hits.Add(1)
+	}))
+	t.Cleanup(ts.Close)
+	c := NewServerClient(Config{BaseURL: ts.URL, APIVersion: "103", HTTPClient: ts.Client()})
+	if got := c.APIVersion(); got != "103" {
+		t.Fatalf("APIVersion = %q, want 103", got)
+	}
+	if hits.Load() != 0 {
+		t.Fatal("configured apiVersion must not call the version endpoint")
+	}
+}
+
+func TestAPIVersionDetectionFailureFallsBackAndRetries(t *testing.T) {
+	var fail atomic.Bool
+	fail.Store(true)
+	c := newTestClient(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		if fail.Load() {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		_, _ = w.Write([]byte(`{"api_version":"104"}`))
+	}), false)
+	defer func() { _ = c.Close() }()
+
+	if got := c.APIVersion(); got != "100" {
+		t.Fatalf("APIVersion on failure = %q, want fallback 100", got)
+	}
+	fail.Store(false)
+	if got := c.APIVersion(); got != "104" {
+		t.Fatalf("APIVersion after recovery = %q, want 104 (failure not cached)", got)
+	}
+}

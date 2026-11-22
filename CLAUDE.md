@@ -6,7 +6,7 @@ Guidance for Claude Code in this repository. Family standard: `/exporter-standar
 ## Overview
 
 `pmax_exporter` — Prometheus + OTLP exporter for Dell PowerMax via the Unisphere REST
-API. Go 1.27.2, hand-rolled `resty/v2` client (ADR-0003: `gopowermax` declined — perf
+API. Go (version pinned in `go.mod`), hand-rolled `resty/v2` client (ADR-0003: `gopowermax` declined — perf
 coverage is CSI-scoped). Metric prefix `pmax_`, port **9443**.
 
 ## Commands
@@ -27,7 +27,9 @@ docker compose up -d  # demo stack: exporter :9443, Prometheus :9090, Grafana :3
 - `main.go` — cobra CLI, HTTP served **before** first collect (ADR-0008), SIGHUP +
   file-watch reload (ADR-0005), `/health` off the snapshot.
 - `internal/pmaxclient` — Unisphere client: **HTTP Basic per request** (no token
-  endpoint exists, ADR-0004), TLS ≥1.2, retry 5xx-only, `Get`/`Post`, `Mock` for tests.
+  endpoint exists, ADR-0004), TLS ≥1.2, retry 5xx-only, `Get`/`Post`, `Mock` for tests. `APIVersion()` (the
+  `/system` + `/sloprovisioning` prefix) is auto-detected from `GET /univmax/restapi/version`
+  when `apiVersion` is unset (ADR-0015); `/performance` is unversioned.
 - `internal/pmax` — snapshot model (ADR-0002): `collector.go` discovers arrays via
   `GET /performance/Array/keys` per instance, then runs `ResourceCollector`s;
   `SnapshotStore` RWMutex pointer-swap; dual export `prometheus.go` (unchecked
@@ -59,12 +61,14 @@ docker compose up -d  # demo stack: exporter :9443, Prometheus :9090, Grafana :3
   names are unit-explicit and keep Unisphere-native units (MB/s, ms, TB, GB).
 - **Catalog keys are exact-case** — one wrong key 400s the whole category query
   (visible as `pmax_collector_up{collector="perf_…"} 0`). The catalog is provisional
-  until live-validated (ADR-0009); cross-check against PyU4V/pmaxperfpy before editing.
+  until live-validated (ADR-0009); keys must exist in the vendored 10.5 spec
+  (`docs/swagger/14405-10.5.0.json`, ADR-0015) — `catalog_spec_test.go` enforces it in `make ci`.
 - **Never log credentials**: no resty `SetDebug`; `--trace` is a body-only
   `OnAfterResponse` hook with a test asserting no leak.
 - **Grafana dashboards hardcode metric names** (`grafana/dashboards/*.json`): renaming
   a catalog metric (e.g. after ADR-0009 live validation) must update the dashboard
-  queries in the same commit — nothing else will catch the drift.
+  queries in the same commit — the spec test fails `make ci` on any dashboard
+  `pmax_*` name the exporter no longer emits.
 - Default collection interval 5m = diagnostic granularity; don't "optimize" it down.
 - No inline semgrep/`nolint` suppressions — restructure instead.
 
@@ -81,5 +85,6 @@ silently swallows them and the test fails with a confusing parse error.
 ## CI/CD
 
 `ci.yml` (make ci + SBOM + semgrep), `release.yml` (GoReleaser + GHCR multi-arch image on
-`v*` tags), `docs.yml` (mkdocs → Pages). Actions SHA-pinned with `# vX.Y.Z` comments;
+`v*` tags), `docs.yml` (mkdocs → Pages) — all three call `fjacquet/ci` reusable
+workflows at `@v1`. Third-party actions SHA-pinned with `# vX.Y.Z` comments;
 `persist-credentials: false` everywhere; release builds with `cache: false`.

@@ -9,9 +9,10 @@ import "context"
 type Client interface {
 	// Name returns the configured instance name (used as the `server` label).
 	Name() string
-	// APIVersion returns the Unisphere REST version prefix (e.g. "100") used for
-	// versioned namespaces like /system and /sloprovisioning. The /performance
-	// namespace is unversioned.
+	// APIVersion returns the Unisphere REST version prefix (e.g. "105") used for
+	// versioned namespaces like /system and /sloprovisioning — configured, or
+	// auto-detected from /univmax/restapi/version. The /performance namespace is
+	// unversioned.
 	APIVersion() string
 	// Get fetches an absolute API path (e.g. "/univmax/restapi/version") and
 	// JSON-decodes the body into out.

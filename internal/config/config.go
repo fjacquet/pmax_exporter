@@ -79,7 +79,7 @@ type Server struct {
 	Password           string   `yaml:"password"`
 	PasswordFile       string   `yaml:"passwordFile"`
 	InsecureSkipVerify EnvBool  `yaml:"insecureSkipVerify"`
-	APIVersion         string   `yaml:"apiVersion"` // Unisphere REST version prefix, defaults to "100"
+	APIVersion         string   `yaml:"apiVersion"` // Unisphere REST version prefix; empty = auto-detect (ADR-0015)
 	Arrays             []string `yaml:"arrays"`
 }
 
@@ -228,9 +228,6 @@ func Load(path string) (*Config, error) {
 		}
 		if err := s.InsecureSkipVerify.Resolve(interpolate); err != nil {
 			return nil, fmt.Errorf("server %s insecureSkipVerify: %w", s.Name, err)
-		}
-		if s.APIVersion == "" {
-			s.APIVersion = "100"
 		}
 	}
 	if cfg.Server.Port == "" {

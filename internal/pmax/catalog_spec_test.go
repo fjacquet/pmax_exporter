@@ -11,7 +11,7 @@ import (
 const reportMode = false
 
 // specExceptions are catalog keys intentionally kept despite absence from the
-// 10.4 spec enum, because the live array accepts them and the spec is incomplete
+// canonical spec enum, because the live array accepts them and the spec is incomplete
 // (ADR-0009). Key: "Category/MetricKey". Value: justification (required, non-empty).
 var specExceptions = map[string]string{
 	// none currently — the catalog is fully spec-consistent as of 2026-06-14.
@@ -27,11 +27,11 @@ func reportf(t *testing.T, format string, a ...any) {
 }
 
 func TestCatalogPerfKeysInSpec(t *testing.T) {
-	spec := specMetrics(t, spec104Path)
+	spec := specMetrics(t, specPath)
 	for _, cat := range PerfCategories() {
 		set, ok := spec[cat.Category]
 		if !ok {
-			reportf(t, "category %q has no /performance/%s/metrics enum in 10.4 spec",
+			reportf(t, "category %q has no /performance/%s/metrics enum in canonical spec",
 				cat.Category, cat.Category)
 			continue
 		}
@@ -40,7 +40,7 @@ func TestCatalogPerfKeysInSpec(t *testing.T) {
 				continue
 			}
 			if !set[m.Key] {
-				reportf(t, "category %q: key %q (-> %s) not in 10.4 spec enum",
+				reportf(t, "category %q: key %q (-> %s) not in canonical spec enum",
 					cat.Category, m.Key, m.Name)
 			}
 		}
@@ -60,7 +60,7 @@ func TestDashboardRefsEmitted(t *testing.T) {
 }
 
 func TestInventoryFieldsInSpec(t *testing.T) {
-	props := specResponseProps(t, spec104Path, "/sloprovisioning/symmetrix/{symmetrixId}/volume/{volumeId}")
+	props := specResponseProps(t, specPath, "/sloprovisioning/symmetrix/{symmetrixId}/volume/{volumeId}")
 	// JSON tags decoded by volumeDetailResp in volume_inventory.go.
 	fields := []string{
 		"volumeId", "cap_gb", "allocated_percent",
@@ -68,29 +68,41 @@ func TestInventoryFieldsInSpec(t *testing.T) {
 	}
 	for _, f := range fields {
 		if !props[f] {
-			reportf(t, "volume detail field %q not in 10.4 volume schema", f)
+			reportf(t, "volume detail field %q not in canonical volume schema", f)
+		}
+	}
+}
+
+func TestArrayInfoFieldsInSpec(t *testing.T) {
+	props := specResponseProps(t, specPath, "/system/symmetrix/{symmetrixId}")
+	// JSON tags decoded by symmetrixResp in arrayinfo.go. `ucode` is the
+	// pre-10.x alias and absent from 10.x specs by design.
+	fields := []string{"symmetrixId", "model", "microcode", "device_count", "disk_count", "cache_size_mb"}
+	for _, f := range fields {
+		if !props[f] {
+			reportf(t, "array info field %q not in canonical systemSymmetrix schema", f)
 		}
 	}
 }
 
 func TestVolumePerfKeysInSpec(t *testing.T) {
-	spec := specMetrics(t, spec104Path)
+	spec := specMetrics(t, specPath)
 	set, ok := spec["Volume"]
 	if !ok {
-		t.Fatal("no /performance/Volume/metrics enum in 10.4 spec")
+		t.Fatal("no /performance/Volume/metrics enum in canonical spec")
 	}
 	for _, m := range volumeMetricDefs {
 		if specExceptions["Volume/"+m.Key] != "" {
 			continue
 		}
 		if !set[m.Key] {
-			reportf(t, "volume perf key %q (-> %s) not in 10.4 spec enum", m.Key, m.Name)
+			reportf(t, "volume perf key %q (-> %s) not in canonical spec enum", m.Key, m.Name)
 		}
 	}
 }
 
 func TestCatalogSkew92(t *testing.T) {
-	s104 := specMetrics(t, spec104Path)
+	sCanon := specMetrics(t, specPath)
 	s92 := specMetrics(t, spec92Path)
 	for _, cat := range PerfCategories() {
 		set92, in92 := s92[cat.Category]
@@ -98,8 +110,8 @@ func TestCatalogSkew92(t *testing.T) {
 			continue // category absent in 9.2 — not a per-key skew signal
 		}
 		for _, m := range cat.Metrics {
-			if s104[cat.Category][m.Key] && !set92[m.Key] {
-				t.Logf("SKEW: %s key %q present in 10.4 but absent in 9.2",
+			if sCanon[cat.Category][m.Key] && !set92[m.Key] {
+				t.Logf("SKEW: %s key %q present in canonical spec but absent in 9.2",
 					cat.Category, m.Key)
 			}
 		}

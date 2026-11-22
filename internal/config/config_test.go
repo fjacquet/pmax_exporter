@@ -29,8 +29,8 @@ servers:
 	if cfg.Servers[0].BaseURL() != "https://uni01.example.com:8443" {
 		t.Fatalf("BaseURL = %q, want :8443 default", cfg.Servers[0].BaseURL())
 	}
-	if cfg.Servers[0].APIVersion != "100" {
-		t.Fatalf("apiVersion default = %q, want 100", cfg.Servers[0].APIVersion)
+	if cfg.Servers[0].APIVersion != "" {
+		t.Fatalf("apiVersion = %q, want empty (auto-detected by the client)", cfg.Servers[0].APIVersion)
 	}
 	if cfg.Collection.MaxConcurrent != 8 {
 		t.Fatalf("maxConcurrent default = %d, want 8", cfg.Collection.MaxConcurrent)

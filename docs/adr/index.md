@@ -19,3 +19,4 @@ Status / Context / Decision / Consequences.
 | [0012](0012-opt-in-volume-collectors.md) | Opt-in volume (LUN) collectors & cost model |
 | [0013](0013-health-always-200-and-static-probes.md) | `/livez`/`/readyz` static probes; `/health` always answers 200 |
 | [0014](0014-alpine-standard.md) | Standardize container base image on Alpine |
+| [0015](0015-unisphere-10.5-spec-and-api-version-detection.md) | Unisphere 10.5 canonical spec; auto-detected REST version |

@@ -35,6 +35,7 @@ nav:
       - 0010 Spec validation CI gate: adr/0010-spec-validation-ci-gate.md
       - 0011 Windows trace binary: adr/0011-windows-binary-for-trace-capture.md
       - 0012 Opt-in volume collectors: adr/0012-opt-in-volume-collectors.md
+      - 0015 Unisphere 10.5 & API version: adr/0015-unisphere-10.5-spec-and-api-version-detection.md
 
 extra:
   version: v0.5.2

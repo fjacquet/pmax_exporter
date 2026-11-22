@@ -8,6 +8,25 @@ All notable changes to this project are documented here. The format is based on
 
 ### Added
 
+- Unisphere REST version auto-detection: when a server's `apiVersion` is unset, the
+  client reads `api_version` from `GET /univmax/restapi/version` and uses it as the
+  `/system` + `/sloprovisioning` prefix (cached on success; falls back to `100` and
+  retries while detection fails). Dell documents N-2 REST version support for 10.0–10.2;
+  10.5 is expected to drop `100`, which the old fixed default used. An explicit
+  `apiVersion` still wins (ADR-0015): remove `apiVersion: "100"` from existing configs
+  (the previous shipped samples set it) to enable detection, or set your server's version.
+- Spec gate now validates the `/system/symmetrix` fields `arrayinfo` decodes — possible
+  for the first time because the 10.5 spec changed that schema's names to snake_case.
+
+### Changed
+
+- Canonical OpenAPI spec for the CI gate is now Unisphere 10.5
+  (`docs/swagger/14405-10.5.0.json`, plus the 10.5 Enhanced Endpoints spec); the perf
+  metric enums for all 51 categories and the volume/SRP schemas are identical to 10.4,
+  so no catalog key or dashboard query changed.
+- `apiVersion` no longer defaults to `"100"` in config loading; the shipped
+  `config.yaml`, Helm values and docs leave it commented out.
+
 - `${VAR:-default}` fallbacks in config env references, ported from `pscale_exporter`.
   Shell / docker-compose semantics: the variable falls back when unset *or* empty, and
   such a reference never aborts startup. A bare `${VAR}` still fails loudly when the

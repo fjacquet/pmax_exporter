@@ -13,8 +13,8 @@ import (
 )
 
 const (
-	spec104Path = "../../docs/swagger/12315-10.4.0.json"
-	spec92Path  = "../../docs/swagger/openapi-9.2.json"
+	specPath   = "../../docs/swagger/14405-10.5.0.json" // canonical spec (ADR-0015)
+	spec92Path = "../../docs/swagger/openapi-9.2.json"  // skew cross-check
 )
 
 var enumRe = regexp.MustCompile(`\*\s+\*\*([A-Za-z0-9_]+)\*\*`)
@@ -195,7 +195,7 @@ func dashboardRefs(t *testing.T) map[string][]string {
 
 // specResponseProps returns the property names of the 200 response schema for the
 // path whose key ends with pathSuffix (paths are version-prefixed, e.g.
-// /104/sloprovisioning/symmetrix/{symmetrixId}/volume/{volumeId}).
+// /105/sloprovisioning/symmetrix/{symmetrixId}/volume/{volumeId}).
 // pathSuffix must uniquely identify exactly one path; if zero or more than one
 // path matches, the test fails with a deterministic fatal error.
 func specResponseProps(t *testing.T, path, pathSuffix string) map[string]bool {
@@ -254,7 +254,7 @@ func specResponseProps(t *testing.T, path, pathSuffix string) map[string]bool {
 }
 
 func TestSpecMetricsLoads(t *testing.T) {
-	got := specMetrics(t, spec104Path)
+	got := specMetrics(t, specPath)
 	want := map[string]int{
 		"Array": 135, "FEDirector": 105, "BEDirector": 31, "FEPort": 33,
 		"BEPort": 10, "CachePartition": 47, "RDFDirector": 34,
