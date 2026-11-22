@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -183,5 +184,28 @@ func TestAPIVersionDetectionFailureFallsBackAndRetries(t *testing.T) {
 	fail.Store(false)
 	if got := c.APIVersion(); got != "104" {
 		t.Fatalf("APIVersion after recovery = %q, want 104 (failure not cached)", got)
+	}
+}
+
+func TestStatusErrorIsNotFound(t *testing.T) {
+	c := newTestClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/missing" {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		w.WriteHeader(http.StatusInternalServerError)
+	}), false)
+	defer func() { _ = c.Close() }()
+
+	var out struct{}
+	err := c.Get(context.Background(), "/missing", &out)
+	if !IsNotFound(err) || err.Error() != "GET /missing: status 404" {
+		t.Fatalf("404: IsNotFound=%v err=%v", IsNotFound(err), err)
+	}
+	if err := c.Get(context.Background(), "/boom", &out); err == nil || IsNotFound(err) {
+		t.Fatalf("500 must be an error but not NotFound: %v", err)
+	}
+	if IsNotFound(nil) || IsNotFound(fmt.Errorf("x")) {
+		t.Fatal("nil/plain errors are not NotFound")
 	}
 }

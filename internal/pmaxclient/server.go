@@ -3,6 +3,7 @@ package pmaxclient
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"net/http"
 	"sync"
@@ -119,7 +120,7 @@ func (c *ServerClient) Get(ctx context.Context, path string, out any) error {
 		return err
 	}
 	if resp.StatusCode() >= 300 {
-		return fmt.Errorf("GET %s: status %d", path, resp.StatusCode())
+		return &StatusError{Method: "GET", Path: path, Code: resp.StatusCode()}
 	}
 	return nil
 }
@@ -136,7 +137,7 @@ func (c *ServerClient) Post(ctx context.Context, path string, body, out any) err
 		return err
 	}
 	if resp.StatusCode() >= 300 {
-		return fmt.Errorf("POST %s: status %d", path, resp.StatusCode())
+		return &StatusError{Method: "POST", Path: path, Code: resp.StatusCode()}
 	}
 	return nil
 }
@@ -145,4 +146,21 @@ func (c *ServerClient) Post(ctx context.Context, path string, body, out any) err
 func (c *ServerClient) Close() error {
 	c.rc.GetClient().CloseIdleConnections()
 	return nil
+}
+
+// StatusError is a non-2xx Unisphere response. Its text is the historical
+// "GET /p: status 404" form so log lines and assertions stay stable.
+type StatusError struct {
+	Method, Path string
+	Code         int
+}
+
+func (e *StatusError) Error() string {
+	return fmt.Sprintf("%s %s: status %d", e.Method, e.Path, e.Code)
+}
+
+// IsNotFound reports whether err wraps a 404 StatusError.
+func IsNotFound(err error) bool {
+	var se *StatusError
+	return errors.As(err, &se) && se.Code == http.StatusNotFound
 }
