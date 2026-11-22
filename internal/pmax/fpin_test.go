@@ -122,3 +122,15 @@ func TestRegistryIncludesFPIN(t *testing.T) {
 	}
 	t.Fatal("fpin not in Registry")
 }
+
+func TestFPINNotFoundKeepsEarlierArrays(t *testing.T) {
+	m := fpinMock("105")
+	m.SetJSON(fpinPath, `{"results":`+fpinItems+`}`)
+	p2 := "/univmax/rest/v1/systems/000297900047/fpins?select=director_port,fpin_type,detected_time,director"
+	m.SetGetError(p2, &pmaxclient.StatusError{Method: "GET", Path: p2, Code: 404})
+	arrays := []ArrayWindow{testArrays[0], {ID: "000297900047", Last: 1}}
+	samples, err := FPIN{}.Collect(context.Background(), m, arrays)
+	if err != nil || len(samples) != 4 {
+		t.Fatalf("samples=%d err=%v, want 4 from array 1", len(samples), err)
+	}
+}
