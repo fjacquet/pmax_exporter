@@ -10,6 +10,9 @@ import (
 // unversioned; /system and /sloprovisioning take the client's APIVersion prefix.
 const RestBase = "/univmax/restapi"
 
+// EnhancedBase is the Unisphere Enhanced Endpoints root (10.5+), distinct from RestBase.
+const EnhancedBase = "/univmax/rest"
+
 // ArrayWindow is one discovered array and the timestamp (epoch ms) of its newest
 // diagnostic performance datapoint, taken from GET /performance/Array/keys.
 // Collectors query startDate=endDate=Last so they always read the latest sample.
@@ -35,6 +38,7 @@ func Registry(maxConcurrent int, vol VolumeOptions) []ResourceCollector {
 		Unisphere{},
 		ArrayInfo{},
 		SRPCapacity{},
+		FPIN{},
 	}
 	for _, cat := range PerfCategories() {
 		out = append(out, Perf{Cat: cat, MaxConcurrent: maxConcurrent})
