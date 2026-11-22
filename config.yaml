@@ -33,5 +33,5 @@ servers:
     # cert). A bare ${PMAX1_SKIP_CERTIFICATE} would abort startup when unset, and a
     # ":-false" fallback would silently start verifying against that cert.
     insecureSkipVerify: "${PMAX1_SKIP_CERTIFICATE:-true}"
-    apiVersion: "100"   # Unisphere REST version prefix for /system and /sloprovisioning
+    # apiVersion: "105"  # optional /system + /sloprovisioning prefix; unset = auto-detect via /univmax/restapi/version
     arrays: []          # optional symmetrixId allowlist; empty = all perf-registered local arrays

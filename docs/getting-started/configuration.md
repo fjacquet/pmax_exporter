@@ -32,7 +32,7 @@ servers:
     username: "${PMAX1_USERNAME}"
     password: "${PMAX1_PASSWORD}"   # or passwordFile: /run/secrets/pmax1
     insecureSkipVerify: true        # explicit opt-in for self-signed Unisphere certs
-    apiVersion: "100"               # REST version prefix for /system & /sloprovisioning
+    # apiVersion: "105"             # optional REST prefix for /system & /sloprovisioning; unset = auto-detect
     arrays: []                      # optional symmetrixId allowlist; empty = all local perf-registered arrays
 ```
 

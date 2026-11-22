@@ -110,7 +110,7 @@ config: |
       username: "${PMAX1_USERNAME}"
       password: "${PMAX1_PASSWORD}"
       insecureSkipVerify: true
-      apiVersion: "100"
+      # apiVersion: "105"  # optional; unset = auto-detected from /univmax/restapi/version
       arrays: []
 
 env: []

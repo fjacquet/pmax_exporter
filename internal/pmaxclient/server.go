@@ -5,6 +5,8 @@ import (
 	"crypto/tls"
 	"fmt"
 	"net/http"
+	"sync"
+	"time"
 
 	"github.com/go-resty/resty/v2"
 	log "github.com/sirupsen/logrus"
@@ -17,7 +19,7 @@ type Config struct {
 	BaseURL            string // e.g. https://unisphere01.example.com:8443
 	Username           string
 	Password           string
-	APIVersion         string // versioned-namespace prefix, e.g. "100"
+	APIVersion         string // versioned-namespace prefix, e.g. "105"; empty = auto-detect
 	InsecureSkipVerify bool
 	HTTPClient         *http.Client
 	// Trace logs every API response body (method, URL, status, body) for
@@ -33,6 +35,9 @@ type Config struct {
 type ServerClient struct {
 	cfg Config
 	rc  *resty.Client
+
+	mu       sync.Mutex
+	detected string // cached auto-detected APIVersion; empty until a detection succeeds
 }
 
 // NewServerClient builds a client.
@@ -71,12 +76,37 @@ func NewServerClient(cfg Config) *ServerClient {
 
 func (c *ServerClient) Name() string { return c.cfg.Name }
 
-// APIVersion returns the configured versioned-namespace prefix (default "100").
+// fallbackAPIVersion is used only while auto-detection fails; every
+// Unisphere 10.x up to 10.2 serves it (ADR-0015).
+const fallbackAPIVersion = "100"
+
+// APIVersion returns the configured versioned-namespace prefix or, when none is
+// configured, the server's own api_version from GET /univmax/restapi/version.
+// Dell documents N-2 REST version support (10.0–10.2), so a fixed default is
+// expected to go stale across upgrades. A detection is cached on success; a failure falls back to "100"
+// and is retried on the next call.
 func (c *ServerClient) APIVersion() string {
-	if c.cfg.APIVersion == "" {
-		return "100"
+	if c.cfg.APIVersion != "" {
+		return c.cfg.APIVersion
 	}
-	return c.cfg.APIVersion
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.detected != "" {
+		return c.detected
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	var v struct {
+		APIVersion string `json:"api_version"`
+	}
+	if err := c.Get(ctx, "/univmax/restapi/version", &v); err != nil || v.APIVersion == "" {
+		log.WithField("server", c.cfg.Name).WithError(err).
+			Warnf("apiVersion auto-detect failed; using %s for this call", fallbackAPIVersion)
+		return fallbackAPIVersion
+	}
+	log.WithFields(log.Fields{"server": c.cfg.Name, "apiVersion": v.APIVersion}).Info("apiVersion auto-detected")
+	c.detected = v.APIVersion
+	return c.detected
 }
 
 // Get fetches path and decodes the JSON response into out. ForceContentType

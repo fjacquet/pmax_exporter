@@ -2,7 +2,8 @@
 
 ## Status
 Accepted. Builds on [ADR-0009](0009-provisional-api-mappings.md) (does not supersede it —
-live-array validation remains the final step).
+live-array validation remains the final step). The canonical spec moved from 10.4 to 10.5
+in [ADR-0015](0015-unisphere-10.5-spec-and-api-version-detection.md); the gate itself is unchanged.
 
 ## Context
 ADR-0009 left the perf catalog "provisional until a live Unisphere confirms it", with the
