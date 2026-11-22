@@ -1,7 +1,10 @@
 package pmax
 
 import (
+	"encoding/json"
+	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -115,5 +118,42 @@ func TestCatalogSkew92(t *testing.T) {
 					cat.Category, m.Key)
 			}
 		}
+	}
+}
+
+func TestFPINInSpec(t *testing.T) {
+	raw, err := os.ReadFile(enhancedSpecPath)
+	if err != nil {
+		t.Fatalf("read spec: %v", err)
+	}
+	var doc struct {
+		Paths      map[string]map[string]json.RawMessage `json:"paths"`
+		Components struct {
+			Schemas map[string]struct {
+				Properties map[string]json.RawMessage `json:"properties"`
+			} `json:"schemas"`
+		} `json:"components"`
+	}
+	if err := json.Unmarshal(raw, &doc); err != nil {
+		t.Fatalf("parse spec: %v", err)
+	}
+	if _, ok := doc.Paths["/v1/systems/{id}/fpins"]["get"]; !ok {
+		reportf(t, "GET /v1/systems/{id}/fpins not in enhanced spec")
+	}
+	lower := func(schema string) map[string]bool {
+		m := map[string]bool{}
+		for k := range doc.Components.Schemas[schema].Properties {
+			m[strings.ToLower(k)] = true
+		}
+		return m
+	}
+	fpin := lower("Fpin")
+	for _, f := range []string{"director_port", "fpin_type", "detected_time", "director"} {
+		if !fpin[f] {
+			reportf(t, "Fpin schema missing field %q", f)
+		}
+	}
+	if !lower("pagingInfoType")["resume_token"] {
+		reportf(t, "pagingInfoType missing resume_token")
 	}
 }

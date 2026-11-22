@@ -15,6 +15,8 @@ import (
 const (
 	specPath   = "../../docs/swagger/14405-10.5.0.json" // canonical spec (ADR-0015)
 	spec92Path = "../../docs/swagger/openapi-9.2.json"  // skew cross-check
+
+	enhancedSpecPath = "../../docs/swagger/14406-10.5.0.json" // Enhanced API (FPIN)
 )
 
 var enumRe = regexp.MustCompile(`\*\s+\*\*([A-Za-z0-9_]+)\*\*`)
