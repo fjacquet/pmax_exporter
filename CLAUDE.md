@@ -47,6 +47,9 @@ docker compose up -d  # demo stack: exporter :9443, Prometheus :9090, Grafana :3
   `volume_inventory.go` (`collection.volumeInventory`): capacity + identity
   (WWN/identifier) via sloprovisioning volume list per SG (first page only,
   truncation logged) + one GET per volume.
+- **FPIN** (`fpin.go`): Unisphere 10.5 `GET /univmax/rest/v1/systems/{id}/fpins` (Enhanced
+  Endpoints root `/univmax/rest`, not `restapi`) → `pmax_fpin_*` per port/`fpin_type`;
+  silent below 10.5 or on 404 (ADR-0015).
 - `internal/config` — yaml + `${ENV}` fail-fast interpolation + `passwordFile` +
   `.env` (godotenv; real env always wins).
 

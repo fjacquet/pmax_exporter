@@ -336,13 +336,45 @@
     },
 
     {
-      "id": 105, "type": "row", "title": "Capacity & efficiency", "collapsed": true,
+      "id": 106, "type": "row", "title": "SAN fabric (FPIN)", "collapsed": true,
       "gridPos": {"h": 1, "w": 24, "x": 0, "y": 29},
+      "panels": [
+        {
+          "id": 70, "type": "timeseries", "title": "FPIN events by type",
+          "description": "Fabric Performance Impact Notifications (Unisphere 10.5+) per type: a snapshot count of events currently reported, not a rate. Empty on older Unisphere.",
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 30},
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "targets": [{"expr": "sum by (fpin_type) (pmax_fpin_events{server=~\"$server\", array=~\"$array\"})", "legendFormat": "{{fpin_type}}"}],
+          "fieldConfig": {"defaults": {"min": 0, "custom": {"fillOpacity": 8}}, "overrides": []},
+          "options": {"legend": {"displayMode": "table", "calcs": ["lastNotNull", "max"]}, "tooltip": {"mode": "multi", "sort": "desc"}}
+        },
+        {
+          "id": 71, "type": "table", "title": "FPIN by port",
+          "description": "FPIN event count and time since the last event, per port and type.",
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 30},
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "targets": [
+            {"refId": "A", "expr": "pmax_fpin_events{server=~\"$server\", array=~\"$array\"}", "instant": true, "format": "table"},
+            {"refId": "B", "expr": "time() - pmax_fpin_last_detected_timestamp_seconds{server=~\"$server\", array=~\"$array\"}", "instant": true, "format": "table"}
+          ],
+          "transformations": [
+            {"id": "merge", "options": {}},
+            {"id": "organize", "options": {"excludeByName": {"Time": true, "server": true, "__name__": true}, "renameByName": {"Value #A": "Events", "Value #B": "Last event age"}}}
+          ],
+          "fieldConfig": {"defaults": {}, "overrides": [{"matcher": {"id": "byName", "options": "Last event age"}, "properties": [{"id": "unit", "value": "s"}]}]},
+          "options": {"showHeader": true}
+        }
+      ]
+    },
+
+    {
+      "id": 105, "type": "row", "title": "Capacity & efficiency", "collapsed": true,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 30},
       "panels": [
         {
           "id": 60, "type": "bargauge", "title": "SRP usable capacity used",
           "description": "Usable used / usable total per SRP. Yellow > 70%, red > 85%.",
-          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 30},
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 31},
           "datasource": {"type": "prometheus", "uid": "prometheus"},
           "targets": [{"expr": "100 * pmax_srp_usable_used_terabytes{server=~\"$server\", array=~\"$array\"} / pmax_srp_usable_total_terabytes{server=~\"$server\", array=~\"$array\"}", "legendFormat": "{{array}} {{srp}}", "instant": true}],
           "fieldConfig": {"defaults": {"unit": "percent", "min": 0, "max": 100, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 70}, {"color": "red", "value": 85}]}}, "overrides": []},
@@ -351,7 +383,7 @@
         {
           "id": 61, "type": "timeseries", "title": "SRP subscription (oversubscription)",
           "description": "Subscribed vs usable capacity (TB). Subscribed above usable is thin oversubscription — fine until effective used catches up.",
-          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 30},
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 31},
           "datasource": {"type": "prometheus", "uid": "prometheus"},
           "targets": [
             {"expr": "pmax_srp_subscribed_used_terabytes{server=~\"$server\", array=~\"$array\"}", "legendFormat": "{{array}} {{srp}} subscribed"},
@@ -363,7 +395,7 @@
         {
           "id": 62, "type": "stat", "title": "SRP efficiency (x:1)",
           "description": "Overall data-reduction efficiency ratio per SRP (dedup + compression + thin).",
-          "gridPos": {"h": 8, "w": 6, "x": 0, "y": 38},
+          "gridPos": {"h": 8, "w": 6, "x": 0, "y": 39},
           "datasource": {"type": "prometheus", "uid": "prometheus"},
           "targets": [{"expr": "pmax_srp_overall_efficiency_ratio{server=~\"$server\", array=~\"$array\"}", "legendFormat": "{{array}} {{srp}}", "instant": true}],
           "fieldConfig": {"defaults": {"decimals": 1, "thresholds": {"mode": "absolute", "steps": [{"color": "blue", "value": null}]}}, "overrides": []},
@@ -372,7 +404,7 @@
         {
           "id": 63, "type": "timeseries", "title": "SRP load",
           "description": "Per-SRP host IOPS (left axis) and response time (right axis, ms).",
-          "gridPos": {"h": 8, "w": 18, "x": 6, "y": 38},
+          "gridPos": {"h": 8, "w": 18, "x": 6, "y": 39},
           "datasource": {"type": "prometheus", "uid": "prometheus"},
           "targets": [
             {"expr": "pmax_srp_host_iops{server=~\"$server\", array=~\"$array\"}", "legendFormat": "{{array}} {{srp}} IOPS"},

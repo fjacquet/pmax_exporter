@@ -8,6 +8,10 @@ All notable changes to this project are documented here. The format is based on
 
 ### Added
 
+- FPIN collector (`fpin`): `pmax_fpin_events` and `pmax_fpin_last_detected_timestamp_seconds`
+  per array/director/port/`fpin_type` from the Unisphere 10.5 Enhanced Endpoint
+  `/univmax/rest/v1/systems/{id}/fpins` (silent on older Unisphere), plus a "SAN fabric
+  (FPIN)" row in the overview dashboard (ADR-0015).
 - Unisphere REST version auto-detection: when a server's `apiVersion` is unset, the
   client reads `api_version` from `GET /univmax/restapi/version` and uses it as the
   `/system` + `/sloprovisioning` prefix (cached on success; falls back to `100` and
