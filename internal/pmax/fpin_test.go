@@ -1,8 +1,12 @@
 package pmax
 
 import (
+	"bytes"
 	"context"
+	"strings"
 	"testing"
+
+	log "github.com/sirupsen/logrus"
 
 	"github.com/fjacquet/pmax_exporter/internal/pmaxclient"
 )
@@ -133,4 +137,45 @@ func TestFPINNotFoundKeepsEarlierArrays(t *testing.T) {
 	if err != nil || len(samples) != 4 {
 		t.Fatalf("samples=%d err=%v, want 4 from array 1", len(samples), err)
 	}
+}
+
+func TestFPINNotFoundSkipsOnlyThatArray(t *testing.T) {
+	m := fpinMock("105")
+	p1 := "/univmax/rest/v1/systems/000297900047/fpins?select=director_port,fpin_type,detected_time"
+	m.SetGetError(p1, &pmaxclient.StatusError{Method: "GET", Path: p1, Code: 404})
+	m.SetJSON(fpinPath, `{"results":`+fpinItems+`}`)
+	arrays := []ArrayWindow{{ID: "000297900047", Last: 1}, testArrays[0]}
+	samples, err := FPIN{}.Collect(context.Background(), m, arrays)
+	if err != nil || len(samples) != 4 {
+		t.Fatalf("samples=%d err=%v, want 4 from the array after the 404", len(samples), err)
+	}
+}
+
+func TestFPINSkipLogsOncePerCallAndMakesNoRequest(t *testing.T) {
+	var buf bytes.Buffer
+	orig := log.StandardLogger().Out
+	log.SetOutput(&buf)
+	defer log.SetOutput(orig)
+	m := fpinMock("104")
+	m.SetJSON(fpinPath, `{"results":`+fpinItems+`}`) // would yield samples if requested
+	arrays := []ArrayWindow{testArrays[0], {ID: "000297900047", Last: 1}}
+	samples, err := FPIN{}.Collect(context.Background(), m, arrays)
+	if err != nil || len(samples) != 0 {
+		t.Fatalf("samples=%v err=%v, want none", samples, err)
+	}
+	out := buf.String()
+	if n := strings.Count(out, "fpin skipped: REST api version below 105"); n != 1 {
+		t.Fatalf("skip log count = %d, want 1; log: %s", n, out)
+	}
+	for _, f := range []string{"server=uni01", "apiVersion=104"} {
+		if !strings.Contains(out, f) {
+			t.Fatalf("log missing %s: %s", f, out)
+		}
+	}
+}
+
+func TestFPINBothKeysCountedOnce(t *testing.T) {
+	m := fpinMock("105")
+	m.SetJSON(fpinPath, `{"results":`+fpinItems+`,"fpins":`+fpinItems+`}`)
+	checkFPINAggregates(t, m)
 }

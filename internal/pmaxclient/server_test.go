@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -228,5 +229,49 @@ func TestStatusErrorIsNotFound(t *testing.T) {
 	}
 	if IsNotFound(nil) || IsNotFound(fmt.Errorf("x")) {
 		t.Fatal("nil/plain errors are not NotFound")
+	}
+}
+
+func TestAPIVersionCloseAbortsInFlightDetection(t *testing.T) {
+	release := make(chan struct{})
+	c := newTestClient(t, http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {
+		<-release
+	}), false)
+	t.Cleanup(func() { close(release) }) // runs before ts.Close (LIFO)
+	done := make(chan string, 1)
+	go func() { done <- c.APIVersion() }()
+	time.Sleep(200 * time.Millisecond)
+	_ = c.Close()
+	select {
+	case got := <-done:
+		if got != "100" {
+			t.Fatalf("APIVersion = %q, want fallback 100", got)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("APIVersion did not return after Close")
+	}
+}
+
+func TestAPIVersionConcurrentCallersShareOneRequest(t *testing.T) {
+	var hits atomic.Int32
+	c := newTestClient(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		hits.Add(1)
+		time.Sleep(300 * time.Millisecond)
+		_, _ = w.Write([]byte(`{"api_version":"105"}`))
+	}), false)
+	defer func() { _ = c.Close() }()
+	var wg sync.WaitGroup
+	for range 8 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if got := c.APIVersion(); got != "105" {
+				t.Errorf("APIVersion = %q, want 105", got)
+			}
+		}()
+	}
+	wg.Wait()
+	if n := hits.Load(); n != 1 {
+		t.Fatalf("version endpoint hit %d times, want 1", n)
 	}
 }

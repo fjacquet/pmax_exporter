@@ -183,6 +183,9 @@ Unisphere 10.5+ Enhanced Endpoints (`/univmax/rest` root); collector `fpin`. Sil
 older Unisphere (version gate) or when the endpoint 404s. Values are snapshot counts, not
 rates. An explicit `apiVersion` below `105` (e.g. the old sample value `"100"`) disables
 FPIN on a 10.5 server, since the collector is gated on the configured/detected REST version.
+Listings are capped at 20 pages: on truncation or a failed page the counts for that array are
+partial or absent for that cycle. `pmax_fpin_events` is a point-in-time count, not a counter,
+so do not use it with `increase()`.
 
 | Metric | Labels | Description |
 |---|---|---|
