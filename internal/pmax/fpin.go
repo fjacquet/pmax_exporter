@@ -60,7 +60,7 @@ func (FPIN) Collect(ctx context.Context, c pmaxclient.Client, arrays []ArrayWind
 			var r fpinResp
 			if err := c.Get(ctx, path, &r); err != nil {
 				if pmaxclient.IsNotFound(err) {
-					return nil, nil // feature absent on this array/Unisphere
+					return out, nil // feature absent: drop this array's partial data, keep earlier arrays
 				}
 				return out, err
 			}
@@ -104,9 +104,6 @@ func (FPIN) Collect(ctx context.Context, c pmaxclient.Client, arrays []ArrayWind
 
 func fpinAdd(agg map[fpinKey]*fpinAgg, it fpinItem) {
 	dir, port, _ := strings.Cut(it.DirectorPort, ":")
-	if it.DirectorPort != "" && !strings.Contains(it.DirectorPort, ":") {
-		port = ""
-	}
 	if it.Director.ID != "" {
 		dir = it.Director.ID
 	}
