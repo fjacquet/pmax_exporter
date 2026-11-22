@@ -33,6 +33,9 @@ type fpinItem struct {
 	} `json:"director"`
 }
 
+// fpinSelect lists only fields the 10.5 Enhanced spec offers in `select` (TestFPINInSpec).
+const fpinSelect = "director_port,fpin_type,detected_time"
+
 type fpinKey struct{ director, port, typ string }
 
 type fpinAgg struct {
@@ -54,7 +57,7 @@ func (FPIN) Collect(ctx context.Context, c pmaxclient.Client, arrays []ArrayWind
 	var out []Sample
 	for _, a := range arrays {
 		agg := map[fpinKey]*fpinAgg{}
-		base := EnhancedBase + "/v1/systems/" + a.ID + "/fpins?select=director_port,fpin_type,detected_time,director"
+		base := EnhancedBase + "/v1/systems/" + a.ID + "/fpins?select=" + fpinSelect
 		path, pages := base, 0
 		for {
 			var r fpinResp

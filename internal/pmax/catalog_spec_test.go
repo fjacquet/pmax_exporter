@@ -137,8 +137,29 @@ func TestFPINInSpec(t *testing.T) {
 	if err := json.Unmarshal(raw, &doc); err != nil {
 		t.Fatalf("parse spec: %v", err)
 	}
-	if _, ok := doc.Paths["/v1/systems/{id}/fpins"]["get"]; !ok {
+	get, ok := doc.Paths["/v1/systems/{id}/fpins"]["get"]
+	if !ok {
 		reportf(t, "GET /v1/systems/{id}/fpins not in enhanced spec")
+	}
+	var op struct {
+		Parameters []struct {
+			Name        string `json:"name"`
+			Description string `json:"description"`
+		} `json:"parameters"`
+	}
+	if err := json.Unmarshal(get, &op); err != nil {
+		t.Fatalf("parse fpins GET: %v", err)
+	}
+	selectDesc := ""
+	for _, p := range op.Parameters {
+		if p.Name == "select" {
+			selectDesc = p.Description
+		}
+	}
+	for _, f := range strings.Split(fpinSelect, ",") {
+		if !strings.Contains(selectDesc, "| "+f+" |") {
+			reportf(t, "requested select field %q is not selectable per the spec", f)
+		}
 	}
 	lower := func(schema string) map[string]bool {
 		m := map[string]bool{}

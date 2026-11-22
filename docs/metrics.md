@@ -181,7 +181,8 @@ Only the first list page (1000 volumes per SG) is read; truncation is logged.
 
 Unisphere 10.5+ Enhanced Endpoints (`/univmax/rest` root); collector `fpin`. Silent on
 older Unisphere (version gate) or when the endpoint 404s. Values are snapshot counts, not
-rates.
+rates. An explicit `apiVersion` below `105` (e.g. the old sample value `"100"`) disables
+FPIN on a 10.5 server, since the collector is gated on the configured/detected REST version.
 
 | Metric | Labels | Description |
 |---|---|---|
